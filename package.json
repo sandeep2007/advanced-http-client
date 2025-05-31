@@ -1,0 +1,35 @@
+{
+  "name": "http-client",
+  "version": "1.0.0",
+  "description": "Universal HTTP client library using fetch for JS/TS projects (React, Next.js, Vue, Node.js, Bun, etc.)",
+  "scripts": {
+    "build:esm": "tsc --project tsconfig.esm.json --outDir dist/esm",
+    "build:cjs": "tsc --project tsconfig.cjs.json --outDir dist/cjs",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs",
+    "prepare": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rimraf dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.3"
+  },
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/esm/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ]
+}
