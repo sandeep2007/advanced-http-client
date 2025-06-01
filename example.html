@@ -6,21 +6,66 @@
   </head>
   <body>
     <h2>http-client Browser Test</h2>
-    <pre id="output">Loading...</pre>
+    <pre id="output"></pre>
     <script src="./dist/browser/http-client.js"></script>
     <script>
-      // Use the UMD global
-      HttpClient.httpRequest("https://jsonplaceholder.typicode.com/todos/1")
-        .then((response) => response.json())
-        .then((data) => {
-          document.getElementById("output").textContent = JSON.stringify(
-            data,
-            null,
-            2
-          );
+      function logHttpError(prefix, err) {
+        if (err && err.response) {
+          document.getElementById("output").textContent =
+            `${prefix}HTTP Error: ${err.response.status} ${err.response.statusText}\n` +
+            `Response data: ${JSON.stringify(err.response.data, null, 2)}\n` +
+            `Headers: ${JSON.stringify(err.response.headers, null, 2)}`;
+        } else {
+          document.getElementById("output").textContent = `${prefix}Error: ${
+            err && err.message ? err.message : String(err)
+          }`;
+        }
+      }
+
+      // GET example (404)
+      HttpClient.get("https://jsonplaceholder.typicode.com/todos/1")
+        .then((response) => {
+          document.getElementById("output").textContent +=
+            "\nGET: " + JSON.stringify(response, null, 2);
         })
         .catch((err) => {
-          document.getElementById("output").textContent = err;
+          logHttpError("GET: ", err);
+        });
+
+      // POST example
+      HttpClient.post("https://jsonplaceholder.typicode.com/posts", {
+        title: "foo",
+        body: "bar",
+        userId: 1,
+      })
+        .then((response) => {
+          document.getElementById("output").textContent +=
+            "\nPOST: " + JSON.stringify(response, null, 2);
+        })
+        .catch((err) => {
+          logHttpError("POST: ", err);
+        });
+
+      // PATCH example
+      HttpClient.patch("https://jsonplaceholder.typicode.com/posts/1", {
+        title: "updated title",
+      })
+        .then((response) => {
+          document.getElementById("output").textContent +=
+            "\nPATCH: " + JSON.stringify(response, null, 2);
+        })
+        .catch((err) => {
+          logHttpError("PATCH: ", err);
+        });
+
+      // DELETE example
+      HttpClient.delete("https://jsonplaceholder.typicode.com/posts/1")
+        .then((response) => {
+          document.getElementById("output").textContent +=
+            "\nDELETE: " + JSON.stringify(response, null, 2);
+        })
+        .catch((err) => {
+          logHttpError("DELETE: ", err);
         });
     </script>
   </body>

@@ -37,9 +37,5 @@
   },
   "files": [
     "dist"
-  ],
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node"
-  }
+  ]
 }
