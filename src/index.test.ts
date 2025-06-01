@@ -1,3 +1,5 @@
+jest.setTimeout(15000); // Increase timeout for slow network or API
+
 import HttpClient from "./index";
 
 describe("HttpClient", () => {
