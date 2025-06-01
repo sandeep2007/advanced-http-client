@@ -5,8 +5,11 @@ module.exports = {
   output: {
     filename: "http-client.js",
     path: path.resolve(__dirname, "dist/browser"),
-    library: "HttpClient",
-    libraryTarget: "umd",
+    library: {
+      name: "HttpClient",
+      type: "umd",
+      export: "default"
+    },
     globalObject: "this",
     clean: true,
   },
