@@ -132,6 +132,16 @@ try {
 
 ---
 
+## Important Notes
+
+- **Default Accept Header:** All requests include an `Accept: application/json` header by default unless you override it. This ensures consistent JSON parsing for most APIs.
+- **Content-Type Handling:** For `post`, `patch`, and `delete` methods, the `Content-Type: application/json` header is only set if you do not provide your own. This allows sending custom payloads (e.g., `FormData`, `Blob`).
+- **DELETE with Body:** The `delete` method supports an optional request body, which is stringified as JSON by default if provided.
+- **UMD/Browser Usage:** In browser environments, the library is available as the global `HttpClient` (e.g., `window.HttpClient`).
+- **Node.js Compatibility:** For Node.js versions <18, you must polyfill `fetch` (e.g., with `node-fetch`).
+
+---
+
 ## Building
 
 ```
