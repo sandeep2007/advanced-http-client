@@ -22,14 +22,14 @@ A universal, Axios-style HTTP client library using `fetch` for JavaScript and Ty
 ## Installation
 
 ```
-npm install http-client
+npm install advance-http-client
 ```
 
 Or clone and build locally:
 
 ```
 git clone <repo-url>
-cd http-client
+cd advance-http-client
 npm install
 npm run build
 ```
