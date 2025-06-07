@@ -22,16 +22,21 @@
         }
       }
 
+      const http = HttpClient.create({
+        baseURL: "https://jsonplaceholder.typicode.com", // Set a timeout of 5 seconds
+      });
+
       // Example of setting an authorization header
       HttpClient.setHeader("Authorization", "Bearer YOUR_ACCESS_TOKEN");
       HttpClient.setHeader("ApiKey", "MY_API_KEY");
 
       // GET example (404)
-      HttpClient.get("https://jsonplaceholder.typicode.com/todos/1", {
-        headers: {
-          Authorization: "123",
-        },
-      })
+      http
+        .get("/todos/1", {
+          headers: {
+            Authorization: "123",
+          },
+        })
         .then((response) => {
           document.getElementById("output").textContent +=
             "\nGET: " + JSON.stringify(response, null, 2);

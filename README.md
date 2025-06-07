@@ -1,10 +1,10 @@
 # advance-http-client
 
-A universal, Axios-style HTTP client library using `fetch` for JavaScript and TypeScript projects. Works seamlessly in Node.js (18+), browsers, and modern JS runtimes/frameworks (React, Next.js, Vue, Bun, etc.).
+A universal, modern HTTP client library using `fetch` for JavaScript and TypeScript projects. Works seamlessly in Node.js (18+), browsers, and modern JS runtimes/frameworks (React, Next.js, Vue, Bun, etc.).
 
 - **ESM, CJS, and UMD builds**
 - **TypeScript support**
-- **Axios-style API and error handling**
+- **Flexible API and error handling**
 - **Lightweight, no dependencies**
 
 ---
@@ -13,9 +13,11 @@ A universal, Axios-style HTTP client library using `fetch` for JavaScript and Ty
 
 - Universal: Works in Node.js (18+), browsers, and modern runtimes
 - Static methods: `get`, `post`, `patch`, `delete`, and `request`
-- Axios-style response and error objects
+- Response and error objects with useful metadata
 - Full TypeScript typings
 - ESM, CJS, and UMD (browser) builds
+- **Instance configuration**: Create custom HttpClient instances with default `baseURL`, headers, and other options using `HttpClient.create()`. Each instance can have its own defaults, and per-request options override instance and global settings.
+- **Static and instance methods**: All HTTP methods (`get`, `post`, `patch`, `delete`, `request`) are available as both static and instance methods for maximum flexibility.
 
 ---
 
@@ -90,7 +92,7 @@ main();
 
 ### API
 
-All methods return a Promise that resolves to an Axios-style response object or rejects with an error containing a `.response` property:
+All methods return a Promise that resolves to a response object or rejects with an error containing a `.response` property:
 
 ```ts
 interface HttpClientResponse<T = any> {
@@ -118,7 +120,7 @@ interface HttpClientResponse<T = any> {
 
 #### Error Handling
 
-All non-2xx/3xx responses throw an error with an Axios-style `.response` property:
+All non-2xx/3xx responses throw an error with a `.response` property:
 
 ```js
 try {
@@ -128,6 +130,25 @@ try {
     console.error(err.response.status); // e.g. 404
   }
 }
+```
+
+---
+
+### Creating an Instance
+
+You can create a custom HttpClient instance with its own default configuration using `HttpClient.create()`. This allows you to set a `baseURL`, default headers, and other options for that instance. Per-request options always override instance and global defaults.
+
+```js
+const api = HttpClient.create({
+  baseURL: "https://api.example.com",
+  headers: { Authorization: "Bearer token" },
+});
+
+// Uses baseURL and default headers
+api.get("/users"); // GET https://api.example.com/users
+
+// Per-request headers override instance/global headers
+api.get("/users", { headers: { Authorization: "Other token" } });
 ```
 
 ---
@@ -161,6 +182,15 @@ npm run test
 ```
 
 Runs Jest tests in `src/index.test.ts`.
+
+---
+
+## Security Note
+
+- Do not hardcode sensitive credentials (e.g., Authorization tokens, API keys) in client-side/browser code.
+- Global headers set with setHeader are sent with every request unless overridden. Use per-request headers for sensitive data when possible.
+- Always validate and sanitize any dynamic URLs or user input passed to request methods to avoid SSRF or open redirect risks.
+- This library has no known vulnerabilities and no dependencies, but always keep your environment and polyfills up to date.
 
 ---
 
