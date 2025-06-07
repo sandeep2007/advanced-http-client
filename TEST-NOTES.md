@@ -22,6 +22,7 @@ This document summarizes the test coverage provided by the Jest test suite (`src
 - **Header precedence**: Per-request headers override instance/global headers.
 - **baseURL logic**: Does not prepend baseURL for absolute URLs.
 - **DELETE with body**: Supported and tested.
+- **Isolated requests**: The `isolated: true` option is tested to ensure a request ignores all global, instance, and default settings, using only the provided options.
 
 ## Not Covered / Not Implemented
 

@@ -17,6 +17,10 @@ export interface HttpRequestOptions extends Omit<RequestInit, "headers"> {
    * Headers as a plain object. This is always a Record<string, string> in this implementation.
    */
   headers: Record<string, string>;
+  /**
+   * If true, this request will ignore all global, instance, and default settings, using only the provided options.
+   */
+  isolated?: boolean;
 }
 
 export interface HttpClientConfig extends Omit<RequestInit, "headers"> {
@@ -81,7 +85,24 @@ export class HttpClient {
     return data;
   }
 
-  private mergeConfig(options?: RequestInit): HttpRequestOptions {
+  private mergeConfig(options?: RequestInit & { isolated?: boolean }): HttpRequestOptions {
+    if (options && (options as any).isolated) {
+      // Only use the provided options, do not merge any global, instance, or default settings
+      const headers: Record<string, string> = {};
+      if (options.headers) {
+        if (options.headers instanceof Headers) {
+          options.headers.forEach((v, k) => (headers[k] = v));
+        } else if (Array.isArray(options.headers)) {
+          options.headers.forEach(([k, v]) => (headers[k] = v));
+        } else {
+          Object.assign(headers, options.headers);
+        }
+      }
+      return {
+        ...options,
+        headers,
+      };
+    }
     // Merge instance headers, global headers, and per-request headers
     const mergedHeaders: Record<string, string> = {
       ...this.instanceHeaders,
