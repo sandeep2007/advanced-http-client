@@ -1,4 +1,4 @@
-# http-client
+# advance-http-client
 
 A universal, Axios-style HTTP client library using `fetch` for JavaScript and TypeScript projects. Works seamlessly in Node.js (18+), browsers, and modern JS runtimes/frameworks (React, Next.js, Vue, Bun, etc.).
 
@@ -45,13 +45,19 @@ import HttpClient from "./dist/esm/index.js";
 
 async function main() {
   try {
-    const response = await HttpClient.get("https://jsonplaceholder.typicode.com/todos/1");
+    const response = await HttpClient.get(
+      "https://jsonplaceholder.typicode.com/todos/1"
+    );
     console.log("Fetched data:", response.data);
     console.log("Status:", response.status);
     console.log("Headers:", response.headers);
   } catch (err) {
     if (err && err.response) {
-      console.error("HTTP Error:", err.response.status, err.response.statusText);
+      console.error(
+        "HTTP Error:",
+        err.response.status,
+        err.response.statusText
+      );
       console.error("Response data:", err.response.data);
       console.error("Headers:", err.response.headers);
     } else {
@@ -69,10 +75,10 @@ main();
 <script src="./dist/browser/http-client.js"></script>
 <script>
   HttpClient.get("https://jsonplaceholder.typicode.com/todos/1")
-    .then(response => {
+    .then((response) => {
       console.log("Fetched data:", response.data);
     })
-    .catch(err => {
+    .catch((err) => {
       if (err && err.response) {
         console.error("HTTP Error:", err.response.status);
       } else {
@@ -103,6 +109,7 @@ interface HttpClientResponse<T = any> {
 ```
 
 #### Methods
+
 - `HttpClient.get(url, options?)`
 - `HttpClient.post(url, body?, options?)`
 - `HttpClient.patch(url, body?, options?)`
@@ -110,6 +117,7 @@ interface HttpClientResponse<T = any> {
 - `HttpClient.request(url, options?)`
 
 #### Error Handling
+
 All non-2xx/3xx responses throw an error with an Axios-style `.response` property:
 
 ```js
@@ -129,6 +137,7 @@ try {
 ```
 npm run build
 ```
+
 - ESM output: `dist/esm/`
 - CJS output: `dist/cjs/`
 - UMD (browser): `dist/browser/http-client.js`
@@ -140,6 +149,7 @@ npm run build
 ```
 npm run test
 ```
+
 Runs Jest tests in `src/index.test.ts`.
 
 ---

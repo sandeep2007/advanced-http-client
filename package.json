@@ -1,5 +1,5 @@
 {
-  "name": "http-client",
+  "name": "advance-http-client",
   "version": "1.0.0",
   "description": "Universal HTTP client library using fetch for JS/TS projects (React, Next.js, Vue, Node.js, Bun, etc.)",
   "scripts": {
