@@ -8,7 +8,7 @@ module.exports = {
     library: {
       name: "HttpClient",
       type: "umd",
-      export: "default"
+      export: "default",
     },
     globalObject: "this",
     clean: true,

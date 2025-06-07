@@ -1,9 +1,14 @@
 jest.setTimeout(15000); // Increase timeout for slow network or API
 
-import HttpClient from "./index";
+import { HttpClient } from "./index";
 
 describe("HttpClient", () => {
   const baseUrl = "https://jsonplaceholder.typicode.com";
+
+  afterEach(() => {
+    // Reset global headers to avoid test pollution
+    (HttpClient as any).globalHeaders = {};
+  });
 
   it("should GET data successfully", async () => {
     const res = await HttpClient.get(`${baseUrl}/todos/1`);
@@ -66,5 +71,15 @@ describe("HttpClient", () => {
       expect(err).toBeInstanceOf(Error);
       expect(err.response.status).toBe(400);
     }
+  });
+
+  it("should set global headers and send them with requests", async () => {
+    HttpClient.setHeader("Authorization", "Bearer TEST_TOKEN");
+    HttpClient.setHeader("X-Test-Header", "test-value");
+    const res = await HttpClient.get(`${baseUrl}/todos/1`);
+    // The API doesn't echo headers, but we can check that config.options.headers contains our headers
+    const headers = res.config.options && typeof res.config.options.headers === 'object' ? res.config.options.headers as Record<string, string> : {};
+    expect(headers["Authorization"]).toBe("Bearer TEST_TOKEN");
+    expect(headers["X-Test-Header"]).toBe("test-value");
   });
 });
