@@ -46,11 +46,15 @@
         });
 
       // POST example
-      HttpClient.post("https://jsonplaceholder.typicode.com/posts", {
-        title: "foo",
-        body: "bar",
-        userId: 1,
-      })
+      HttpClient.post(
+        "https://jsonplaceholder.typicode.com/posts",
+        {
+          title: "foo",
+          body: "bar",
+          userId: 1,
+        },
+        { isolated: true }
+      )
         .then((response) => {
           document.getElementById("output").textContent +=
             "\nPOST: " + JSON.stringify(response, null, 2);
@@ -71,15 +75,18 @@
           logHttpError("PATCH: ", err);
         });
 
-      // DELETE example
-      HttpClient.delete("https://jsonplaceholder.typicode.com/posts/1")
-        .then((response) => {
-          document.getElementById("output").textContent +=
-            "\nDELETE: " + JSON.stringify(response, null, 2);
-        })
-        .catch((err) => {
-          logHttpError("DELETE: ", err);
-        });
+      setTimeout(() => {
+        HttpClient.setHeader("Authorization", "999999");
+        // DELETE example
+        HttpClient.delete("https://jsonplaceholder.typicode.com/posts/1")
+          .then((response) => {
+            document.getElementById("output").textContent +=
+              "\nDELETE: " + JSON.stringify(response, null, 2);
+          })
+          .catch((err) => {
+            logHttpError("DELETE: ", err);
+          });
+      }, 5000);
     </script>
   </body>
 </html>

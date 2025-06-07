@@ -151,6 +151,23 @@ api.get("/users"); // GET https://api.example.com/users
 api.get("/users", { headers: { Authorization: "Other token" } });
 ```
 
+### Custom Request Isolation
+
+You can run a request completely isolated from all global, instance, and default settings by passing the `isolated: true` option. When this is set, only the options you provide for that request are used—no global headers, no baseURL, and no defaults are applied.
+
+**Example:**
+
+```js
+// This request will NOT use any global headers, instance config, or defaults
+HttpClient.post("https://jsonplaceholder.typicode.com/posts", {
+  title: "foo",
+  body: "bar",
+  userId: 1,
+}, { isolated: true });
+```
+
+This is useful for advanced scenarios where you need a request to be fully independent of any shared configuration.
+
 ---
 
 ## Important Notes

@@ -156,4 +156,24 @@ describe("HttpClient", () => {
     expect(res.status).toBeGreaterThanOrEqual(200);
     expect(res.status).toBeLessThan(300);
   });
+
+  it("should ignore all global, instance, and default settings when isolated is true", async () => {
+    HttpClient.setHeader("Authorization", "SHOULD_NOT_BE_SENT");
+    const client = HttpClient.create({ baseURL: baseUrl, headers: { "X-Instance": "SHOULD_NOT_BE_SENT" } });
+    const res = await client.post(
+      "https://jsonplaceholder.typicode.com/posts",
+      { title: "iso", body: "test", userId: 99 },
+      {
+        headers: { "X-Isolated": "yes" },
+        isolated: true,
+      } as any // Cast to any to allow custom option
+    );
+    // Should only have the explicitly provided header, not global or instance
+    const headers = res.config.options && typeof res.config.options.headers === 'object' ? res.config.options.headers as Record<string, string> : {};
+    expect(headers["Authorization"]).toBeUndefined();
+    expect(headers["X-Instance"]).toBeUndefined();
+    expect(headers["X-Isolated"]).toBe("yes");
+    // Should not have default Accept header unless user set it
+    expect(headers["Accept"]).toBeUndefined();
+  });
 });
