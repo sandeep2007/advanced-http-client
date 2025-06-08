@@ -37,7 +37,7 @@ export class HttpClient {
   constructor(config?: HttpClientConfig) {
     this.baseURL = config?.baseURL;
     this.instanceHeaders = { ...(config?.headers || {}) };
-    const { baseURL, headers, ...rest } = config || {};
+    const { baseURL: _baseURL, headers: _headers, ...rest } = config || {};
     this.instanceOptions = rest;
   }
 
@@ -85,7 +85,9 @@ export class HttpClient {
     return data;
   }
 
-  private mergeConfig(options?: RequestInit & { isolated?: boolean }): HttpRequestOptions {
+  private mergeConfig(
+    options?: RequestInit & { isolated?: boolean }
+  ): HttpRequestOptions {
     if (options && (options as any).isolated) {
       // Only use the provided options, do not merge any global, instance, or default settings
       const headers: Record<string, string> = {};
