@@ -21,6 +21,10 @@ export interface HttpRequestOptions extends Omit<RequestInit, "headers"> {
    * If true, this request will ignore all global, instance, and default settings, using only the provided options.
    */
   isolated?: boolean;
+  /**
+   * If set, and isolated is true, these header names will be included from global/instance headers if present.
+   */
+  includeHeaders?: string[];
 }
 
 export interface HttpClientConfig extends Omit<RequestInit, "headers"> {
@@ -86,11 +90,23 @@ export class HttpClient {
   }
 
   private mergeConfig(
-    options?: RequestInit & { isolated?: boolean }
+    options?: RequestInit & { isolated?: boolean; includeHeaders?: string[] }
   ): HttpRequestOptions {
     if (options && (options as any).isolated) {
-      // Only use the provided options, do not merge any global, instance, or default settings
       const headers: Record<string, string> = {};
+      // If includeHeaders is set, pull those from global/instance headers
+      if (Array.isArray((options as any).includeHeaders)) {
+        const include = (options as any).includeHeaders as string[];
+        // Pull from instanceHeaders first, then globalHeaders
+        for (const key of include) {
+          if (this.instanceHeaders?.[key] !== undefined) {
+            headers[key] = this.instanceHeaders[key];
+          } else if (HttpClient.globalHeaders[key] !== undefined) {
+            headers[key] = HttpClient.globalHeaders[key];
+          }
+        }
+      }
+      // Merge in provided headers (overrides included ones)
       if (options.headers) {
         if (options.headers instanceof Headers) {
           options.headers.forEach((v, k) => (headers[k] = v));

@@ -23,7 +23,10 @@
       }
 
       const http = HttpClient.create({
-        baseURL: "https://jsonplaceholder.typicode.com", // Set a timeout of 5 seconds
+        baseURL: "https://jsonplaceholder.typicode.com",
+        headers: {
+          "X-Global": "global-header",
+        },
       });
 
       // Example of setting an authorization header
@@ -36,6 +39,8 @@
           headers: {
             Authorization: "123",
           },
+          isolated: true,
+          includeHeaders: ["X-Global"],
         })
         .then((response) => {
           document.getElementById("output").textContent +=

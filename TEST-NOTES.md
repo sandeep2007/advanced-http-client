@@ -23,6 +23,7 @@ This document summarizes the test coverage provided by the Jest test suite (`src
 - **baseURL logic**: Does not prepend baseURL for absolute URLs.
 - **DELETE with body**: Supported and tested.
 - **Isolated requests**: The `isolated: true` option is tested to ensure a request ignores all global, instance, and default settings, using only the provided options.
+- **Isolated requests with includeHeaders**: Tests verify that when `isolated: true` and `includeHeaders` is set, only the specified headers from global or instance headers are included in the request, along with any per-request headers. If `includeHeaders` is not set, only explicitly provided headers are sent. This ensures secure, selective header inclusion for advanced scenarios.
 
 ## Not Covered / Not Implemented
 

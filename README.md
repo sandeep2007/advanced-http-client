@@ -159,14 +159,45 @@ You can run a request completely isolated from all global, instance, and default
 
 ```js
 // This request will NOT use any global headers, instance config, or defaults
-HttpClient.post("https://jsonplaceholder.typicode.com/posts", {
-  title: "foo",
-  body: "bar",
-  userId: 1,
-}, { isolated: true });
+HttpClient.post(
+  "https://jsonplaceholder.typicode.com/posts",
+  {
+    title: "foo",
+    body: "bar",
+    userId: 1,
+  },
+  { isolated: true }
+);
 ```
 
 This is useful for advanced scenarios where you need a request to be fully independent of any shared configuration.
+
+### Isolated Requests with `includeHeaders`
+
+You can use the `includeHeaders` option (array of header names) with `isolated: true` to selectively include specific headers from global or instance headers in an otherwise isolated request. This is useful for sending only a subset of default headers in a secure, controlled way.
+
+**Example:**
+
+```js
+// Set global and instance headers
+HttpClient.setHeader("ApiKey", "MY_API_KEY");
+const http = HttpClient.create({
+  baseURL: "https://api.example.com",
+  headers: { "X-Global": "global-header" },
+});
+
+// Isolated request, but include only 'ApiKey' and 'X-Global' if present
+http.get("/resource", {
+  isolated: true,
+  includeHeaders: ["ApiKey", "X-Global"],
+  headers: { Authorization: "123" }, // Per-request headers still override
+});
+```
+
+- If `isolated: true` and `includeHeaders` is set, only the specified headers (if present in global or instance headers) are included, plus any headers you provide directly in the request.
+- If `isolated: true` and `includeHeaders` is not set, only the headers you provide in the request are sent.
+
+See also: [Security Notes](#security-notes)
 
 ---
 
