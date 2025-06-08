@@ -159,7 +159,10 @@ describe("HttpClient", () => {
 
   it("should ignore all global, instance, and default settings when isolated is true", async () => {
     HttpClient.setHeader("Authorization", "SHOULD_NOT_BE_SENT");
-    const client = HttpClient.create({ baseURL: baseUrl, headers: { "X-Instance": "SHOULD_NOT_BE_SENT" } });
+    const client = HttpClient.create({
+      baseURL: baseUrl,
+      headers: { "X-Instance": "SHOULD_NOT_BE_SENT" },
+    });
     const res = await client.post(
       "https://jsonplaceholder.typicode.com/posts",
       { title: "iso", body: "test", userId: 99 },
@@ -169,11 +172,106 @@ describe("HttpClient", () => {
       } as any // Cast to any to allow custom option
     );
     // Should only have the explicitly provided header, not global or instance
-    const headers = res.config.options && typeof res.config.options.headers === 'object' ? res.config.options.headers as Record<string, string> : {};
+    const headers =
+      res.config.options && typeof res.config.options.headers === "object"
+        ? (res.config.options.headers as Record<string, string>)
+        : {};
     expect(headers["Authorization"]).toBeUndefined();
     expect(headers["X-Instance"]).toBeUndefined();
     expect(headers["X-Isolated"]).toBe("yes");
     // Should not have default Accept header unless user set it
     expect(headers["Accept"]).toBeUndefined();
+  });
+});
+
+describe("HttpClient isolated mode with includeHeaders", () => {
+  it("should include only specified headers from global/instance in isolated mode", async () => {
+    HttpClient.setHeader("X-Global", "global-value");
+    const client = HttpClient.create({
+      headers: {
+        "X-Instance": "instance-value",
+        "X-Common": "instance-common",
+      },
+    });
+    // Should only include X-Global and X-Instance, not X-Common, not X-Other
+    const spy = jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ ok: true }),
+      text: async () => "", // mock text for parseResponseBody fallback
+      headers: {
+        forEach: (_cb: any) => {},
+        get: () => undefined, // mock get for parseResponseBody
+      },
+    } as any);
+    await client.get("/test", {
+      isolated: true,
+      includeHeaders: ["X-Global", "X-Instance"],
+      headers: { "X-Request": "request-value" },
+    } as any);
+    const fetchArgs = spy.mock.calls[0][1];
+    // Convert headers to a plain object if it's a Headers instance
+    let headersObj: Record<string, string> = {};
+    if (fetchArgs?.headers) {
+      if (fetchArgs.headers instanceof Headers) {
+        fetchArgs.headers.forEach(
+          (v: string, k: string) => (headersObj[k] = v)
+        );
+      } else if (Array.isArray(fetchArgs.headers)) {
+        fetchArgs.headers.forEach(
+          ([k, v]: [string, string]) => (headersObj[k] = v)
+        );
+      } else {
+        headersObj = fetchArgs.headers;
+      }
+    }
+
+    expect(headersObj["X-Global"]).toBe("global-value");
+    expect(headersObj["X-Instance"]).toBe("instance-value");
+    expect(headersObj["X-Request"]).toBe("request-value");
+    expect(headersObj["X-Common"]).toBeUndefined();
+    spy.mockRestore();
+  });
+
+  it("should not include any global/instance headers if includeHeaders is not set in isolated mode", async () => {
+    HttpClient.setHeader("X-Global2", "global2-value");
+    const client = HttpClient.create({
+      headers: { "X-Instance2": "instance2-value" },
+    });
+    const spy = jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ ok: true }),
+      text: async () => "", // mock text for parseResponseBody fallback
+      headers: {
+        forEach: (_cb: any) => {},
+        get: () => undefined, // mock get for parseResponseBody
+      },
+    } as any);
+    await client.get("/test", {
+      isolated: true,
+      headers: { "X-Request": "request-value" },
+    } as any);
+    const fetchArgs = spy.mock.calls[0][1];
+    let headersObj: Record<string, string> = {};
+    if (fetchArgs?.headers) {
+      if (fetchArgs.headers instanceof Headers) {
+        fetchArgs.headers.forEach(
+          (v: string, k: string) => (headersObj[k] = v)
+        );
+      } else if (Array.isArray(fetchArgs.headers)) {
+        fetchArgs.headers.forEach(
+          ([k, v]: [string, string]) => (headersObj[k] = v)
+        );
+      } else {
+        headersObj = fetchArgs.headers;
+      }
+    }
+    expect(headersObj["X-Global2"]).toBeUndefined();
+    expect(headersObj["X-Instance2"]).toBeUndefined();
+    expect(headersObj["X-Request"]).toBe("request-value");
+    spy.mockRestore();
   });
 });
