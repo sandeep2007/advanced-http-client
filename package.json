@@ -9,6 +9,10 @@
     "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:web",
     "prepare": "npm run build",
     "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:coverage:watch": "jest --coverage --watch",
+    "generate:coverage-report": "node scripts/generate-coverage-report.js",
     "clean": "rimraf dist",
     "lint": "eslint ./src --ext .ts"
   },

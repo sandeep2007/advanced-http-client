@@ -1,4 +1,15 @@
-export interface HttpClientResponse<T = any> {
+// Define proper types for extended options
+export interface ExtendedRequestInit extends RequestInit {
+  isolated?: boolean;
+  includeHeaders?: string[];
+}
+
+// Define proper error type
+export interface HttpClientError extends Error {
+  response: HttpClientResponse;
+}
+
+export interface HttpClientResponse<T = unknown> {
   data: T;
   status: number;
   statusText: string;
@@ -7,7 +18,7 @@ export interface HttpClientResponse<T = any> {
     url: string;
     options?: RequestInit;
     method: string;
-    body?: any;
+    body?: unknown;
   };
   request: Response;
 }
@@ -32,6 +43,23 @@ export interface HttpClientConfig extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
 }
 
+// Constants for content types
+const CONTENT_TYPES = {
+  JSON: "application/json",
+  TEXT: "text/",
+  FORM: "form",
+  BLOB: "blob",
+  ARRAY_BUFFER: "arraybuffer",
+} as const;
+
+// Constants for HTTP methods
+const HTTP_METHODS = {
+  GET: "GET",
+  POST: "POST",
+  PATCH: "PATCH",
+  DELETE: "DELETE",
+} as const;
+
 export class HttpClient {
   private static globalHeaders: Record<string, string> = {};
   private readonly baseURL?: string;
@@ -48,7 +76,7 @@ export class HttpClient {
   /**
    * Set a global header for all requests (e.g., for authorization).
    */
-  static setHeader(key: string, value: string) {
+  static setHeader(key: string, value: string): void {
     this.globalHeaders[key] = value;
   }
 
@@ -66,22 +94,23 @@ export class HttpClient {
    * api.get('/users'); // GET https://api.example.com/users
    * ```
    */
-  static create(config?: HttpClientConfig) {
+  static create(config?: HttpClientConfig): HttpClient {
     return new HttpClient(config);
   }
 
-  private static async parseResponseBody(response: Response): Promise<any> {
-    let data: any = undefined;
+  private static async parseResponseBody(response: Response): Promise<unknown> {
+    let data: unknown = undefined;
     const contentType: string = response.headers.get("content-type") ?? "";
-    if (contentType && contentType.indexOf("application/json") !== -1) {
+    
+    if (contentType && contentType.indexOf(CONTENT_TYPES.JSON) !== -1) {
       data = await response.json();
-    } else if (contentType && contentType.indexOf("text/") !== -1) {
+    } else if (contentType && contentType.indexOf(CONTENT_TYPES.TEXT) !== -1) {
       data = await response.text();
-    } else if (contentType && contentType.indexOf("form") !== -1) {
+    } else if (contentType && contentType.indexOf(CONTENT_TYPES.FORM) !== -1) {
       data = await response.formData();
-    } else if (contentType && contentType.indexOf("blob") !== -1) {
+    } else if (contentType && contentType.indexOf(CONTENT_TYPES.BLOB) !== -1) {
       data = await response.blob();
-    } else if (contentType && contentType.indexOf("arraybuffer") !== -1) {
+    } else if (contentType && contentType.indexOf(CONTENT_TYPES.ARRAY_BUFFER) !== -1) {
       data = await response.arrayBuffer();
     } else {
       data = await response.text();
@@ -89,14 +118,13 @@ export class HttpClient {
     return data;
   }
 
-  private mergeConfig(
-    options?: RequestInit & { isolated?: boolean; includeHeaders?: string[] }
-  ): HttpRequestOptions {
-    if (options && (options as any).isolated) {
+  private mergeConfig(options?: ExtendedRequestInit): HttpRequestOptions {
+    if (options?.isolated) {
       const headers: Record<string, string> = {};
+      
       // If includeHeaders is set, pull those from global/instance headers
-      if (Array.isArray((options as any).includeHeaders)) {
-        const include = (options as any).includeHeaders as string[];
+      if (Array.isArray(options.includeHeaders)) {
+        const include = options.includeHeaders;
         // Pull from instanceHeaders first, then globalHeaders
         for (const key of include) {
           if (this.instanceHeaders?.[key] !== undefined) {
@@ -106,6 +134,7 @@ export class HttpClient {
           }
         }
       }
+      
       // Merge in provided headers (overrides included ones)
       if (options.headers) {
         if (options.headers instanceof Headers) {
@@ -116,37 +145,44 @@ export class HttpClient {
           Object.assign(headers, options.headers);
         }
       }
+      
       return {
         ...options,
         headers,
       };
     }
+    
     // Merge instance headers, global headers, and per-request headers
     const mergedHeaders: Record<string, string> = {
       ...this.instanceHeaders,
       ...(options?.headers instanceof Headers
-        ? (() => {
-            const obj: Record<string, string> = {};
-            options.headers.forEach((v, k) => {
-              obj[k] = v;
-            });
-            return obj;
-          })()
+        ? this.convertHeadersToObject(options.headers)
         : (options?.headers as Record<string, string>) || {}),
     };
+    
     // Merge global headers after user headers, so user headers take precedence
     Object.entries(HttpClient.globalHeaders).forEach(([k, v]) => {
       if (!(k in mergedHeaders)) mergedHeaders[k] = v;
     });
+    
     // Set default Accept header if not already set
     if (!mergedHeaders["Accept"]) {
-      mergedHeaders["Accept"] = "application/json";
+      mergedHeaders["Accept"] = CONTENT_TYPES.JSON;
     }
+    
     return {
       ...this.instanceOptions,
       ...options,
       headers: mergedHeaders,
     };
+  }
+
+  private convertHeadersToObject(headers: Headers): Record<string, string> {
+    const obj: Record<string, string> = {};
+    headers.forEach((v, k) => {
+      obj[k] = v;
+    });
+    return obj;
   }
 
   private buildURL(url: string): string {
@@ -156,7 +192,7 @@ export class HttpClient {
     return url;
   }
 
-  async request<T = any>(
+  async request<T = unknown>(
     url: string,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
@@ -165,115 +201,119 @@ export class HttpClient {
         "fetch is not available in this environment. For Node.js <18, install a fetch polyfill."
       );
     }
-    const finalOptions = this.mergeConfig(options);
+    
+    const finalOptions = this.mergeConfig(options as ExtendedRequestInit);
     const fullUrl = this.buildURL(url);
     const response = await fetch(fullUrl, finalOptions);
-    let data: any = await HttpClient.parseResponseBody(response);
+    const data = await HttpClient.parseResponseBody(response);
     const headers: Record<string, string> = {};
+    
     response.headers.forEach((value, key) => {
       headers[key] = value;
     });
+    
     const result: HttpClientResponse<T> = {
-      data,
+      data: data as T,
       status: response.status,
       statusText: response.statusText,
       headers,
       config: {
         url: fullUrl,
         options: finalOptions,
-        method: finalOptions?.method ?? "GET",
+        method: finalOptions?.method ?? HTTP_METHODS.GET,
         body: finalOptions?.body,
       },
       request: response,
     };
+    
     if (!response.ok) {
-      const error: any = new Error(
+      const error = new Error(
         `Request failed with status code ${response.status}`
-      );
+      ) as HttpClientError;
       error.response = result;
       throw error;
     }
+    
     return result;
   }
 
-  async get<T = any>(
+  async get<T = unknown>(
     url: string,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
-    return this.request<T>(url, { ...options, method: "GET" });
+    return this.request<T>(url, { ...options, method: HTTP_METHODS.GET });
   }
 
-  async post<T = any>(
+  private async requestWithBody<T = unknown>(
+    method: string,
     url: string,
-    body?: any,
+    body?: unknown,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
-    const opts = this.mergeConfig(options);
-    opts.method = "POST";
-    opts.body = body ? JSON.stringify(body) : undefined;
-    if (!opts.headers["Content-Type"]) {
-      opts.headers["Content-Type"] = "application/json";
-    }
-    return this.request<T>(url, opts);
-  }
-
-  async patch<T = any>(
-    url: string,
-    body?: any,
-    options?: RequestInit
-  ): Promise<HttpClientResponse<T>> {
-    const opts = this.mergeConfig(options);
-    opts.method = "PATCH";
-    opts.body = body ? JSON.stringify(body) : undefined;
-    if (!opts.headers["Content-Type"]) {
-      opts.headers["Content-Type"] = "application/json";
-    }
-    return this.request<T>(url, opts);
-  }
-
-  async delete<T = any>(
-    url: string,
-    body?: any,
-    options?: RequestInit
-  ): Promise<HttpClientResponse<T>> {
-    const opts = this.mergeConfig(options);
-    opts.method = "DELETE";
+    const opts = this.mergeConfig(options as ExtendedRequestInit);
+    opts.method = method;
+    
     if (body !== undefined) {
       opts.body = JSON.stringify(body);
       if (!opts.headers["Content-Type"]) {
-        opts.headers["Content-Type"] = "application/json";
+        opts.headers["Content-Type"] = CONTENT_TYPES.JSON;
       }
     }
+    
     return this.request<T>(url, opts);
   }
 
+  async post<T = unknown>(
+    url: string,
+    body?: unknown,
+    options?: RequestInit
+  ): Promise<HttpClientResponse<T>> {
+    return this.requestWithBody<T>(HTTP_METHODS.POST, url, body, options);
+  }
+
+  async patch<T = unknown>(
+    url: string,
+    body?: unknown,
+    options?: RequestInit
+  ): Promise<HttpClientResponse<T>> {
+    return this.requestWithBody<T>(HTTP_METHODS.PATCH, url, body, options);
+  }
+
+  async delete<T = unknown>(
+    url: string,
+    body?: unknown,
+    options?: RequestInit
+  ): Promise<HttpClientResponse<T>> {
+    return this.requestWithBody<T>(HTTP_METHODS.DELETE, url, body, options);
+  }
+
   // Add static methods for backward compatibility
-  static async get<T = any>(
+  static async get<T = unknown>(
     url: string,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
     return new HttpClient().get<T>(url, options);
   }
 
-  static async post<T = any>(
+  static async post<T = unknown>(
     url: string,
-    body?: any,
+    body?: unknown,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
     return new HttpClient().post<T>(url, body, options);
   }
 
-  static async patch<T = any>(
+  static async patch<T = unknown>(
     url: string,
-    body?: any,
+    body?: unknown,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
     return new HttpClient().patch<T>(url, body, options);
   }
 
-  static async delete<T = any>(
+  static async delete<T = unknown>(
     url: string,
-    body?: any,
+    body?: unknown,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
     return new HttpClient().delete<T>(url, body, options);
