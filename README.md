@@ -56,6 +56,82 @@ npm run build
 
 ---
 
+## Development Setup
+
+### Prerequisites
+
+- Node.js 18+ (for built-in fetch support)
+- npm or yarn
+
+### Local Development
+
+```bash
+# Clone the repository
+git clone <repo-url>
+cd advance-http-client
+
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run linting
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Type checking
+npm run type-check
+
+# Build all targets
+npm run build
+
+# Run complete CI pipeline
+npm run ci
+```
+
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm test` | Run Jest tests |
+| `npm run test:coverage` | Run tests with coverage report |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage:watch` | Run tests with coverage in watch mode |
+| `npm run lint` | Run ESLint on source files |
+| `npm run lint:fix` | Fix ESLint issues automatically |
+| `npm run type-check` | Run TypeScript type checking |
+| `npm run build` | Build all targets (ESM, CJS, Browser) |
+| `npm run build:esm` | Build ESM version only |
+| `npm run build:cjs` | Build CommonJS version only |
+| `npm run build:web` | Build browser/UMD version only |
+| `npm run clean` | Clean build artifacts |
+| `npm run ci` | Run complete CI pipeline (lint + type-check + test + build) |
+| `npm run generate:coverage-report` | Generate detailed coverage report |
+
+### Project Structure
+
+```
+advance-http-client/
+├── src/
+│   ├── index.ts          # Main source code
+│   └── index.test.ts     # Test suite
+├── dist/                 # Build outputs
+│   ├── esm/             # ES modules
+│   ├── cjs/             # CommonJS
+│   └── browser/         # UMD bundle
+├── scripts/             # Build and utility scripts
+├── coverage/            # Test coverage reports (generated)
+└── docs/               # Documentation (if any)
+```
+
+---
+
 ## Usage
 
 ### Node.js (18+)
@@ -219,6 +295,65 @@ See also: [Security Notes](#security-notes)
 
 ---
 
+## Migration Guide
+
+### From Axios
+
+```javascript
+// Axios
+import axios from 'axios';
+const response = await axios.get('/api/data');
+
+// advance-http-client
+import HttpClient from 'advance-http-client';
+const response = await HttpClient.get('/api/data');
+```
+
+### From fetch
+
+```javascript
+// Native fetch
+const response = await fetch('/api/data');
+const data = await response.json();
+
+// advance-http-client
+const response = await HttpClient.get('/api/data');
+const data = response.data; // Already parsed
+```
+
+### From node-fetch
+
+```javascript
+// node-fetch
+import fetch from 'node-fetch';
+const response = await fetch('/api/data');
+const data = await response.json();
+
+// advance-http-client (Node.js 18+)
+import HttpClient from 'advance-http-client';
+const response = await HttpClient.get('/api/data');
+const data = response.data;
+```
+
+---
+
+## Performance Considerations
+
+- **Bundle Size**: ~3KB minified (UMD), ~7KB (ESM/CJS)
+- **Memory Usage**: Minimal overhead over native fetch
+- **Network**: Uses native fetch, so performance matches your environment
+- **Parsing**: Automatic JSON parsing for JSON responses
+- **Caching**: No built-in caching (use browser cache or implement your own)
+
+### Best Practices
+
+1. **Reuse Instances**: Create HttpClient instances for APIs you use frequently
+2. **Global Headers**: Use `HttpClient.setHeader()` for headers that apply to all requests
+3. **Error Boundaries**: Always wrap requests in try-catch blocks
+4. **Type Safety**: Use TypeScript for better development experience
+
+---
+
 ## Important Notes
 
 - **Default Accept Header:** All requests include an `Accept: application/json` header by default unless you override it. This ensures consistent JSON parsing for most APIs.
@@ -248,6 +383,42 @@ npm run test
 ```
 
 Runs Jest tests in `src/index.test.ts`.
+
+**Coverage Report:**
+```
+npm run test:coverage
+```
+
+Generates coverage reports in the `coverage/` directory.
+
+---
+
+## Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Make** your changes
+4. **Run** the test suite (`npm run ci`)
+5. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+6. **Push** to the branch (`git push origin feature/amazing-feature`)
+7. **Open** a Pull Request
+
+### Development Guidelines
+
+- Follow the existing code style (ESLint rules)
+- Add tests for new features
+- Update documentation for API changes
+- Ensure all tests pass (`npm run ci`)
+- Maintain TypeScript type safety
+
+### Code Style
+
+- Use TypeScript for all new code
+- Follow ESLint configuration
+- Use meaningful variable and function names
+- Add JSDoc comments for public APIs
 
 ---
 
@@ -379,6 +550,26 @@ const HttpClient = require('advance-http-client');
 
 ---
 
+## Version History
+
+### v1.0.0
+- Initial release
+- Universal HTTP client with fetch
+- TypeScript support
+- ESM, CJS, and UMD builds
+- Instance and static methods
+- Isolated request support
+
+---
+
 ## License
 
 MIT
+
+---
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/sandeep2007/advance-http-client/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/sandeep2007/advance-http-client/discussions)
+- **Documentation**: [GitHub Wiki](https://github.com/sandeep2007/advance-http-client/wiki)
