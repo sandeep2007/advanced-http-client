@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /**
  * Advance HTTP Client - Node.js Examples
  * 
@@ -303,31 +304,31 @@ async function contentTypeExamples() {
 }
 
 // ============================================================================
-// 8. ADVANCED REQUEST OPTIONS
+// 8. ADVANCED OPTIONS
 // ============================================================================
 
 async function advancedOptionsExamples() {
-  console.log('🔧 8. ADVANCED REQUEST OPTIONS');
-  console.log('===============================\n');
+  console.log('🔧 7. ADVANCED OPTIONS');
+  console.log('========================\n');
 
   try {
-    // Custom headers and method override
-    console.log('🔍 Custom Request with Options:');
-    const customResponse = await HttpClient.get('https://httpbin.org/headers', {
+    // Custom headers
+    console.log('🔍 Custom Headers:');
+    const headersResponse = await HttpClient.get('https://httpbin.org/headers', {
       headers: {
         'X-Custom-Header': 'custom-value',
         'Accept': 'application/json'
       }
     });
-    console.log('Custom headers sent:', customResponse.data.headers);
+    console.log('Headers sent:', headersResponse.data.headers);
     console.log('');
 
     // DELETE with body
-    console.log('🗑️ DELETE Request with Body:');
-    const deleteWithBody = await HttpClient.delete('https://httpbin.org/delete', {
+    console.log('🗑️ DELETE with Body:');
+    const deleteResponse = await HttpClient.delete('https://httpbin.org/delete', {
       message: 'This is a delete request with a body'
     });
-    console.log('Delete with body response:', deleteWithBody.data);
+    console.log('Delete response:', deleteResponse.data);
     console.log('');
 
     // Instance with custom options
@@ -335,13 +336,11 @@ async function advancedOptionsExamples() {
     const api = HttpClient.create({
       baseURL: 'https://httpbin.org'
     });
-    
     const instanceResponse = await api.get('/user-agent', {
       headers: {
         'X-Instance-Custom': 'instance-custom-value'
       }
     });
-    console.log('Instance custom request completed');
     console.log('User-Agent:', instanceResponse.data['user-agent']);
     console.log('');
 
@@ -351,7 +350,115 @@ async function advancedOptionsExamples() {
 }
 
 // ============================================================================
-// 9. REAL-WORLD API EXAMPLE
+// 9. INTERCEPTORS
+// ============================================================================
+
+async function interceptorExamples() {
+  console.log('🔄 8. INTERCEPTORS');
+  console.log('==================\n');
+
+  // Create an instance with interceptors
+  const api = HttpClient.create({
+    baseURL: 'https://jsonplaceholder.typicode.com'
+  });
+
+  try {
+    console.log('🔄 Setting up interceptors...');
+
+    // Request interceptor - add auth token and log requests
+    const requestInterceptor = api.interceptors.request.use(
+      (config) => {
+        config.headers['Authorization'] = 'Bearer token-123';
+        config.headers['X-Request-ID'] = `req-${Date.now()}`;
+        console.log(`📤 Request interceptor: ${config.method?.toUpperCase()} ${config.url}`);
+        return config;
+      },
+      (error) => {
+        console.error('❌ Request interceptor error:', error);
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor - transform data and log responses
+    const responseInterceptor = api.interceptors.response.use(
+      (response) => {
+        console.log(`📥 Response interceptor: ${response.status} ${response.statusText}`);
+        // Add metadata to response
+        response.data = {
+          ...response.data,
+          intercepted: true,
+          timestamp: new Date().toISOString()
+        };
+        return response;
+      },
+      (error) => {
+        console.error('❌ Response interceptor error:', error);
+        return Promise.reject(error);
+      }
+    );
+
+    // Error interceptor - handle specific error cases
+    const errorInterceptor = api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.status === 401) {
+          console.log('🔐 Unauthorized - redirecting to login');
+        } else if (error.status === 404) {
+          console.log('🔍 Resource not found');
+        } else if (error.status >= 500) {
+          console.log('🚨 Server error - retrying...');
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    console.log('✅ Interceptors set up successfully!\n');
+
+    // Test request interceptor
+    console.log('🔍 Testing Request Interceptor:');
+    const getResponse = await api.get('/posts/1');
+    console.log('Response headers:', getResponse.headers);
+    console.log('');
+
+    // Test response interceptor
+    console.log('📥 Testing Response Interceptor:');
+    const postResponse = await api.post('/posts', {
+      title: 'Interceptor Test Post',
+      body: 'Testing response transformation',
+      userId: 1
+    });
+    console.log('Transformed response:', postResponse.data);
+    console.log('');
+
+    // Test error interceptor
+    console.log('❌ Testing Error Interceptor:');
+    try {
+      await api.get('/nonexistent-endpoint');
+    } catch (error) {
+      console.log('Error caught by interceptor:', error.message);
+    }
+    console.log('');
+
+    // Demonstrate interceptor management
+    console.log('🔧 Interceptor Management:');
+    console.log('Ejecting request interceptor...');
+    api.interceptors.request.eject(requestInterceptor);
+    
+    console.log('Clearing all response interceptors...');
+    api.interceptors.response.clear();
+    
+    console.log('Testing without interceptors...');
+    const cleanResponse = await api.get('/posts/2');
+    console.log('Clean response (no transformation):', cleanResponse.data);
+    console.log('');
+
+  } catch (error) {
+    console.error('❌ Error in interceptors:', error.message);
+  }
+}
+
+// ============================================================================
+// 10. REAL-WORLD EXAMPLE
 // ============================================================================
 
 async function realWorldExample() {
@@ -418,7 +525,7 @@ async function realWorldExample() {
 }
 
 // ============================================================================
-// 10. PERFORMANCE EXAMPLE
+// 11. PERFORMANCE EXAMPLE
 // ============================================================================
 
 async function performanceExample() {
@@ -468,6 +575,7 @@ async function runAllExamples() {
     await errorHandlingExamples();
     await contentTypeExamples();
     await advancedOptionsExamples();
+    await interceptorExamples();
     await realWorldExample();
     await performanceExample();
 

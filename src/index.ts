@@ -43,6 +43,86 @@ export interface HttpClientConfig extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
 }
 
+// Interceptor types
+export interface RequestInterceptor {
+  (_config: HttpRequestOptions): HttpRequestOptions | Promise<HttpRequestOptions>;
+}
+
+export interface ResponseInterceptor<T = unknown> {
+  (_response: HttpClientResponse<T>): HttpClientResponse<T> | Promise<HttpClientResponse<T>>;
+}
+
+export interface ErrorInterceptor {
+  (_error: HttpClientError): HttpClientError | Promise<HttpClientError> | Promise<never>;
+}
+
+interface InterceptorHandler<T> {
+  _fulfilled?: T;
+  _rejected?: T;
+}
+
+export interface InterceptorManager<T> {
+  use(_fulfilled?: T, _rejected?: T): number;
+  eject(_id: number): void;
+  clear(): void;
+  handlers: InterceptorHandler<T>[];
+}
+
+class InterceptorManagerImpl<T> implements InterceptorManager<T> {
+  private _handlers: InterceptorHandler<T>[] = [];
+  private nextId = 0;
+
+  use(_fulfilled?: T, _rejected?: T): number {
+    this._handlers.push({
+      _fulfilled,
+      _rejected,
+    });
+    return this.nextId++;
+  }
+
+  eject(_id: number): void {
+    if (this._handlers[_id]) {
+      this._handlers[_id] = {};
+    }
+  }
+
+  clear(): void {
+    this._handlers = [];
+  }
+
+  get handlers(): InterceptorHandler<T>[] {
+    return this._handlers;
+  }
+}
+
+// Separate error interceptor manager
+class ErrorInterceptorManagerImpl implements InterceptorManager<ErrorInterceptor> {
+  private _handlers: InterceptorHandler<ErrorInterceptor>[] = [];
+  private nextId = 0;
+
+  use(_fulfilled?: ErrorInterceptor, _rejected?: ErrorInterceptor): number {
+    this._handlers.push({
+      _fulfilled,
+      _rejected,
+    });
+    return this.nextId++;
+  }
+
+  eject(_id: number): void {
+    if (this._handlers[_id]) {
+      this._handlers[_id] = {};
+    }
+  }
+
+  clear(): void {
+    this._handlers = [];
+  }
+
+  get handlers(): InterceptorHandler<ErrorInterceptor>[] {
+    return this._handlers;
+  }
+}
+
 // Constants for content types
 const CONTENT_TYPES = {
   JSON: "application/json",
@@ -65,12 +145,26 @@ export class HttpClient {
   private readonly baseURL?: string;
   private readonly instanceHeaders: Record<string, string>;
   private readonly instanceOptions: Omit<RequestInit, "headers">;
+  
+  // Interceptor properties
+  public interceptors: {
+    request: InterceptorManager<RequestInterceptor>;
+    response: InterceptorManager<ResponseInterceptor>;
+    error: InterceptorManager<ErrorInterceptor>;
+  };
 
   constructor(config?: HttpClientConfig) {
     this.baseURL = config?.baseURL;
     this.instanceHeaders = { ...(config?.headers || {}) };
     const { baseURL: _baseURL, headers: _headers, ...rest } = config || {};
     this.instanceOptions = rest;
+    
+    // Initialize interceptors
+    this.interceptors = {
+      request: new InterceptorManagerImpl<RequestInterceptor>(),
+      response: new InterceptorManagerImpl<ResponseInterceptor>(),
+      error: new ErrorInterceptorManagerImpl(),
+    };
   }
 
   /**
@@ -192,6 +286,55 @@ export class HttpClient {
     return url;
   }
 
+  private async executeRequestInterceptors(config: HttpRequestOptions): Promise<HttpRequestOptions> {
+    let promise: Promise<HttpRequestOptions> = Promise.resolve(config);
+    const chain = this.interceptors.request.handlers;
+    for (const { _fulfilled, _rejected } of chain) {
+      promise = promise.then(
+        _fulfilled ? _fulfilled : (_c) => _c,
+        _rejected ? _rejected : (_e) => Promise.reject(_e)
+      );
+    }
+    return promise;
+  }
+
+  private async executeResponseInterceptors<T>(response: HttpClientResponse<T>): Promise<HttpClientResponse<T>> {
+    let promise: Promise<HttpClientResponse<T>> = Promise.resolve(response);
+    const chain = this.interceptors.response.handlers;
+    for (const { _fulfilled, _rejected } of chain) {
+      promise = promise.then(
+        _fulfilled ? (_fulfilled as (_r: HttpClientResponse<T>) => HttpClientResponse<T> | Promise<HttpClientResponse<T>>) : (_r) => _r,
+        _rejected ? (_rejected as (_e: any) => any) : (_e) => Promise.reject(_e)
+      );
+    }
+    return promise;
+  }
+
+  private async executeErrorInterceptors(error: HttpClientError): Promise<never> {
+    let currentError = error;
+    
+    // Execute error interceptors
+    for (const interceptor of this.interceptors.error.handlers) {
+      if (interceptor._fulfilled) {
+        try {
+          const result = await interceptor._fulfilled(currentError);
+          // If the interceptor returns a response, it means the error was handled
+          if (result && typeof result === 'object' && 'data' in result && 'status' in result) {
+            return result as never;
+          }
+          // If it returns an error, continue the chain
+          if (result && typeof result === 'object' && 'message' in result) {
+            currentError = result as HttpClientError;
+          }
+        } catch (interceptorError) {
+          currentError = interceptorError as HttpClientError;
+        }
+      }
+    }
+    
+    throw currentError;
+  }
+
   async request<T = unknown>(
     url: string,
     options?: RequestInit
@@ -204,37 +347,47 @@ export class HttpClient {
     
     const finalOptions = this.mergeConfig(options as ExtendedRequestInit);
     const fullUrl = this.buildURL(url);
-    const response = await fetch(fullUrl, finalOptions);
-    const data = await HttpClient.parseResponseBody(response);
-    const headers: Record<string, string> = {};
     
-    response.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
+    // Execute request interceptors
+    const interceptedOptions = await this.executeRequestInterceptors(finalOptions);
     
-    const result: HttpClientResponse<T> = {
-      data: data as T,
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-      config: {
-        url: fullUrl,
-        options: finalOptions,
-        method: finalOptions?.method ?? HTTP_METHODS.GET,
-        body: finalOptions?.body,
-      },
-      request: response,
-    };
-    
-    if (!response.ok) {
-      const error = new Error(
-        `Request failed with status code ${response.status}`
-      ) as HttpClientError;
-      error.response = result;
-      throw error;
+    try {
+      const response = await fetch(fullUrl, interceptedOptions);
+      const data = await HttpClient.parseResponseBody(response);
+      const headers: Record<string, string> = {};
+      
+      response.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      
+      const result: HttpClientResponse<T> = {
+        data: data as T,
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+        config: {
+          url: fullUrl,
+          options: interceptedOptions,
+          method: interceptedOptions?.method ?? HTTP_METHODS.GET,
+          body: interceptedOptions?.body,
+        },
+        request: response,
+      };
+      
+      if (!response.ok) {
+        const error = new Error(
+          `Request failed with status code ${response.status}`
+        ) as HttpClientError;
+        error.response = result;
+        throw error;
+      }
+      
+      // Execute response interceptors
+      return await this.executeResponseInterceptors(result);
+    } catch (error) {
+      // Execute error interceptors
+      return await this.executeErrorInterceptors(error as HttpClientError);
     }
-    
-    return result;
   }
 
   async get<T = unknown>(
