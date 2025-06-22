@@ -6,6 +6,11 @@ dist/
 # TypeScript
 *.tsbuildinfo
 
+# Testing
+coverage/
+*.lcov
+.nyc_output/
+
 # VSCode
 .vscode/
 
@@ -16,3 +21,12 @@ Thumbs.db
 # Env
 .env
 .env.*
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
