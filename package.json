@@ -14,16 +14,16 @@
     "bun",
     "browser"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": "Sandeep Kumar <ki.sandeep11@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/advance-http-client.git"
+    "url": "https://github.com/sandeep2007/advance-http-client.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/advance-http-client/issues"
+    "url": "https://github.com/sandeep2007/advance-http-client/issues"
   },
-  "homepage": "https://github.com/yourusername/advance-http-client#readme",
+  "homepage": "https://github.com/sandeep2007/advance-http-client#readme",
   "engines": {
     "node": ">=18.0.0"
   },
