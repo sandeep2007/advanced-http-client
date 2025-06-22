@@ -380,7 +380,7 @@ async function interceptorExamples() {
     );
 
     // Response interceptor - transform data and log responses
-    const responseInterceptor = api.interceptors.response.use(
+    api.interceptors.response.use(
       (response) => {
         console.log(`📥 Response interceptor: ${response.status} ${response.statusText}`);
         // Add metadata to response
@@ -390,15 +390,11 @@ async function interceptorExamples() {
           timestamp: new Date().toISOString()
         };
         return response;
-      },
-      (error) => {
-        console.error('❌ Response interceptor error:', error);
-        return Promise.reject(error);
       }
     );
 
     // Error interceptor - handle specific error cases
-    const errorInterceptor = api.interceptors.response.use(
+    api.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.status === 401) {
