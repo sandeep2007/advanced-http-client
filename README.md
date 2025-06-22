@@ -23,13 +23,31 @@ A universal, modern HTTP client library using `fetch` for JavaScript and TypeScr
 
 ## Installation
 
-```
+```bash
 npm install advance-http-client
 ```
 
+### Node.js Requirements
+
+- **Node.js 18+**: Built-in `fetch` support
+- **Node.js <18**: Install a fetch polyfill like `node-fetch` or `undici`
+
+```bash
+# For Node.js <18
+npm install node-fetch
+```
+
+### Framework Support
+
+- **React/Next.js**: Works out of the box
+- **Vue.js**: Works out of the box  
+- **Vanilla JS**: Works in modern browsers
+- **Bun**: Works out of the box
+- **Deno**: Works out of the box
+
 Or clone and build locally:
 
-```
+```bash
 git clone <repo-url>
 cd advance-http-client
 npm install
@@ -239,6 +257,125 @@ Runs Jest tests in `src/index.test.ts`.
 - Global headers set with setHeader are sent with every request unless overridden. Use per-request headers for sensitive data when possible.
 - Always validate and sanitize any dynamic URLs or user input passed to request methods to avoid SSRF or open redirect risks.
 - This library has no known vulnerabilities and no dependencies, but always keep your environment and polyfills up to date.
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Fetch is not defined (Node.js <18)
+
+**Error:** `fetch is not available in this environment`
+
+**Solution:** Install a fetch polyfill:
+
+```bash
+npm install node-fetch
+```
+
+Then import it at the top of your file:
+
+```javascript
+import 'node-fetch'; // For ESM
+// or
+require('node-fetch'); // For CommonJS
+```
+
+#### 2. Module not found errors
+
+**Error:** `Cannot resolve module 'advance-http-client'`
+
+**Solution:** Check your import/require syntax:
+
+```javascript
+// ESM (recommended)
+import HttpClient from 'advance-http-client';
+
+// CommonJS
+const HttpClient = require('advance-http-client');
+
+// Browser (UMD)
+// Include the script tag first, then use global HttpClient
+```
+
+#### 3. TypeScript errors
+
+**Error:** `Property 'response' does not exist on type 'Error'`
+
+**Solution:** Use proper type checking:
+
+```typescript
+try {
+  await HttpClient.get('/api/data');
+} catch (error) {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const httpError = error as HttpClientError;
+    console.error(httpError.response.status);
+  }
+}
+```
+
+#### 4. CORS issues in browser
+
+**Error:** `Access to fetch at '...' from origin '...' has been blocked by CORS policy`
+
+**Solution:** This is a server-side issue. The server needs to include proper CORS headers.
+
+**Common CORS Issues:**
+- **GitHub API**: Has strict CORS policies and doesn't allow browser requests without authentication
+- **Third-party APIs**: Many APIs don't support CORS for security reasons
+- **Local development**: Use a CORS proxy or configure your server to allow cross-origin requests
+
+**Workarounds:**
+```javascript
+// Use CORS-friendly APIs for browser examples
+const api = HttpClient.create({
+  baseURL: 'https://jsonplaceholder.typicode.com' // CORS-friendly
+});
+
+// For APIs with CORS issues, use a proxy or server-side requests
+const proxyApi = HttpClient.create({
+  baseURL: 'https://cors-anywhere.herokuapp.com/https://api.github.com'
+});
+```
+
+#### 5. Build issues
+
+**Error:** `Cannot find module` during build
+
+**Solution:** Ensure you're using the correct entry point:
+
+```javascript
+// For bundlers (webpack, rollup, etc.)
+import HttpClient from 'advance-http-client';
+
+// For Node.js ESM
+import HttpClient from 'advance-http-client';
+
+// For Node.js CommonJS  
+const HttpClient = require('advance-http-client');
+```
+
+### Environment-Specific Notes
+
+#### React/Next.js
+- Works out of the box with no additional configuration
+- Supports SSR (Server-Side Rendering)
+- Compatible with React 16.8+ (hooks)
+
+#### Vue.js
+- Works in Vue 2 and Vue 3
+- Compatible with Composition API and Options API
+- Supports SSR
+
+#### Bun
+- Native support, no polyfills needed
+- Faster than Node.js for HTTP requests
+
+#### Deno
+- Native support, no polyfills needed
+- Works with Deno's security model
 
 ---
 

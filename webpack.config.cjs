@@ -10,14 +10,18 @@ module.exports = {
       type: "umd",
       export: "default",
     },
-    globalObject: "this",
+    globalObject: "typeof self !== 'undefined' ? self : this",
     clean: true,
   },
   mode: "production",
+  devtool: "source-map",
   module: {
     rules: [],
   },
   resolve: {
     extensions: [".js"],
+  },
+  optimization: {
+    minimize: true,
   },
 };

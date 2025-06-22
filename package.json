@@ -2,6 +2,33 @@
   "name": "advance-http-client",
   "version": "1.0.0",
   "description": "Universal HTTP client library using fetch for JS/TS projects (React, Next.js, Vue, Node.js, Bun, etc.)",
+  "keywords": [
+    "http-client",
+    "fetch",
+    "axios-alternative",
+    "universal",
+    "typescript",
+    "react",
+    "vue",
+    "nodejs",
+    "bun",
+    "browser"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/advance-http-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/advance-http-client/issues"
+  },
+  "homepage": "https://github.com/yourusername/advance-http-client#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "type": "module",
+  "sideEffects": false,
   "scripts": {
     "build:esm": "tsc --project tsconfig.esm.json --outDir dist/esm",
     "build:cjs": "tsc --project tsconfig.cjs.json --outDir dist/cjs",
@@ -9,13 +36,31 @@
     "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:web",
     "prepare": "npm run build",
     "test": "jest",
+    "test:coverage": "jest --coverage",
+    "coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:coverage:watch": "jest --coverage --watch",
+    "generate:coverage-report": "node scripts/generate-coverage-report.js",
     "clean": "rimraf dist",
-    "lint": "eslint ./src --ext .ts"
+    "lint": "eslint ./src --ext .ts",
+    "lint:fix": "eslint ./src --ext .ts --fix",
+    "type-check": "tsc --noEmit"
   },
-  "keywords": [],
-  "author": "",
-  "license": "MIT",
-  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "browser": "./dist/browser/http-client.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "browser": "./dist/browser/http-client.js",
+      "types": "./dist/esm/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.29",
@@ -28,18 +73,5 @@
     "typescript": "5.5.4",
     "webpack": "^5.99.9",
     "webpack-cli": "^6.0.1"
-  },
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "types": "./dist/esm/index.d.ts"
-    }
-  },
-  "files": [
-    "dist"
-  ]
+  }
 }
