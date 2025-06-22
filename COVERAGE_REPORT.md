@@ -2,7 +2,7 @@
 
 ## 📊 Coverage Summary
 
-**Generated:** 2025-06-22T16:32:03.273Z  
+**Generated:** 2025-06-22T17:23:24.689Z  
 **Test Framework:** Jest  
 **Coverage Tool:** Jest Coverage  
 
@@ -10,10 +10,10 @@
 
 | Metric | Percentage | Status |
 |--------|------------|--------|
-| **Statements** | 85.6% | ✅ Good |
-| **Branches** | 80.28% | ✅ Good |
-| **Functions** | 76.92% | ⚠️ Fair |
-| **Lines** | 86.82% | ✅ Good |
+| **Statements** | 95.45% | ✅ Excellent |
+| **Branches** | 94.36% | ✅ Excellent |
+| **Functions** | 89.74% | ✅ Good |
+| **Lines** | 96.89% | ✅ Excellent |
 
 ### File Coverage Details
 
@@ -21,8 +21,8 @@
 ----------|---------|----------|---------|---------|-----------------------------
 File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 ----------|---------|----------|---------|---------|-----------------------------
-C:\workspace\advance-http-client\src\index.ts |    85.6 |    80.28 |   76.92 |   86.82 | 
-All files |    85.6 |    80.28 |   76.92 |   86.82 | 
+C:\workspace\advance-http-client\src\index.ts |   95.45 |    94.36 |   89.74 |   96.89 | 
+All files |   95.45 |    94.36 |   89.74 |   96.89 | 
 
 ```
 
@@ -71,18 +71,18 @@ All lines are covered by tests.
 
 ### Historical Comparison
 - **Previous Coverage:** 88.29% (before SonarQube fixes)
-- **Current Coverage:** 86.82%
-- **Change:** -1.47%
+- **Current Coverage:** 96.89%
+- **Change:** 8.60%
 
 *Note: Coverage reflects current state with interceptor functionality added.*
 
 ## 🎯 Coverage Goals
 
 ### Target Metrics
-- **Statements:** ≥ 90% (Current: 85.6%)
-- **Branches:** ≥ 85% (Current: 80.28%)
-- **Functions:** ≥ 85% (Current: 76.92%)
-- **Lines:** ≥ 90% (Current: 86.82%)
+- **Statements:** ≥ 90% (Current: 95.45%)
+- **Branches:** ≥ 85% (Current: 94.36%)
+- **Functions:** ≥ 85% (Current: 89.74%)
+- **Lines:** ≥ 90% (Current: 96.89%)
 
 ### Improvement Opportunities
 
