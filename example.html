@@ -813,6 +813,38 @@ await Promise.all(concurrentPromises);</code></pre>
             <div id="performance-output" class="output"></div>
           </div>
         </div>
+
+        <!-- 12. Timeout Example -->
+        <div class="example-section">
+          <div class="section-header" onclick="toggleSection(this)">
+            <h3>⏱️ 12. Timeout Example</h3>
+            <p>Abort a request if it exceeds the specified timeout</p>
+          </div>
+          <div class="section-content">
+            <div class="code-snippet">
+              <h4>📝 Code Example:</h4>
+              <pre><code>// Per-request timeout
+try {
+  await HttpClient.get('https://httpbin.org/delay/5', { timeout: 2000 });
+} catch (err) {
+  console.log('Request aborted (per-request):', err.message);
+}
+
+// Instance-level default timeout
+const apiTimeout = HttpClient.create({ baseURL: 'https://httpbin.org', timeout: 2000 });
+try {
+  await apiTimeout.get('/delay/5');
+} catch (err) {
+  console.log('Request aborted (instance default):', err.message);
+}</code></pre>
+            </div>
+            <div class="button-group">
+              <button class="btn btn-danger" onclick="timeoutRequest()">Per-Request Timeout</button>
+              <button class="btn btn-warning" onclick="instanceTimeoutRequest()">Instance Timeout</button>
+            </div>
+            <div id="timeout-output" class="output"></div>
+          </div>
+        </div>
       </div>
 
       <div class="footer">
@@ -1582,6 +1614,38 @@ await Promise.all(concurrentPromises);</code></pre>
 
       function clearPerformance() {
         clearOutput('performance-output');
+      }
+
+      // 12. Timeout Example
+      async function timeoutRequest() {
+        const button = event.target;
+        setLoading(button, true);
+        clearOutput('timeout-output');
+        try {
+          log('timeout-output', '⏱️ Sending request with 2s timeout to 5s delay endpoint...');
+          await HttpClient.get('https://httpbin.org/delay/5', { timeout: 2000 });
+          log('timeout-output', '❌ Request unexpectedly succeeded', 'error');
+        } catch (error) {
+          log('timeout-output', `✅ Request aborted: ${error.message}`, 'success');
+        } finally {
+          setLoading(button, false);
+        }
+      }
+
+      async function instanceTimeoutRequest() {
+        const button = event.target;
+        setLoading(button, true);
+        clearOutput('timeout-output');
+        try {
+          log('timeout-output', '⏱️ Sending request via instance with 2s default timeout...');
+          const apiTimeout = HttpClient.create({ baseURL: 'https://httpbin.org', timeout: 2000 });
+          await apiTimeout.get('/delay/5');
+          log('timeout-output', '❌ Request unexpectedly succeeded', 'error');
+        } catch (error) {
+          log('timeout-output', `✅ Request aborted: ${error.message}`, 'success');
+        } finally {
+          setLoading(button, false);
+        }
       }
 
       // Initialize the page

@@ -2,6 +2,10 @@
 export interface ExtendedRequestInit extends RequestInit {
   isolated?: boolean;
   includeHeaders?: string[];
+  /**
+   * Request timeout in milliseconds. If the request does not complete within this time it will be aborted.
+   */
+  timeout?: number;
 }
 
 // Define proper error type
@@ -36,11 +40,16 @@ export interface HttpRequestOptions extends Omit<RequestInit, "headers"> {
    * If set, and isolated is true, these header names will be included from global/instance headers if present.
    */
   includeHeaders?: string[];
+  /**
+   * Request timeout in milliseconds. If the request does not complete within this time it will be aborted.
+   */
+  timeout?: number;
 }
 
 export interface HttpClientConfig extends Omit<RequestInit, "headers"> {
   baseURL?: string;
   headers?: Record<string, string>;
+  timeout?: number;
 }
 
 // Interceptor types
@@ -351,8 +360,25 @@ export class HttpClient {
     // Execute request interceptors
     const interceptedOptions = await this.executeRequestInterceptors(finalOptions);
     
+    // Timeout handling using AbortController
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    if (typeof interceptedOptions.timeout === "number" && interceptedOptions.timeout > 0) {
+      // If a signal already exists, we cannot attach our AbortController.
+      if (!interceptedOptions.signal) {
+        controller = new AbortController();
+        interceptedOptions.signal = controller.signal;
+      }
+      timeoutId = globalThis.setTimeout(() => {
+        controller?.abort();
+      }, interceptedOptions.timeout);
+      // timeout should not be passed to fetch API
+      delete (interceptedOptions as any).timeout;
+    }
+
     try {
       const response = await fetch(fullUrl, interceptedOptions);
+      if (timeoutId) globalThis.clearTimeout(timeoutId);
       const data = await HttpClient.parseResponseBody(response);
       const headers: Record<string, string> = {};
       
