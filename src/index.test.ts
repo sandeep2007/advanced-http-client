@@ -443,4 +443,472 @@ describe("HttpClient", () => {
       spy.mockRestore();
     });
   });
+
+  describe("Interceptors", () => {
+    it("should execute request interceptors in order", async () => {
+      const executionOrder: string[] = [];
+      
+      const client = HttpClient.create();
+      
+      client.interceptors.request.use(
+        (_config) => {
+          executionOrder.push("interceptor1");
+          return _config;
+        }
+      );
+      
+      client.interceptors.request.use(
+        (_config) => {
+          executionOrder.push("interceptor2");
+          return _config;
+        },
+        (err) => {
+          executionOrder.push("rejected2");
+          return Promise.reject(err);
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      await client.get("/test");
+      
+      expect(executionOrder).toEqual(["interceptor1", "interceptor2"]);
+    });
+
+    it("should execute response interceptors in order", async () => {
+      const executionOrder: string[] = [];
+      
+      const client = HttpClient.create();
+      
+      client.interceptors.response.use(
+        (response) => {
+          executionOrder.push("interceptor1");
+          return response;
+        }
+      );
+      
+      client.interceptors.response.use(
+        (response) => {
+          executionOrder.push("interceptor2");
+          return response;
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      await client.get("/test");
+      
+      expect(executionOrder).toEqual(["interceptor1", "interceptor2"]);
+    });
+
+    it("should execute error interceptors when request fails", async () => {
+      let errorCaught = false;
+      
+      const client = HttpClient.create();
+      
+      client.interceptors.error.use(
+        (error) => {
+          errorCaught = true;
+          throw error;
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ error: "server error" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      try {
+        await client.get("/test");
+      } catch {
+        // Error should be caught by interceptor
+      }
+      
+      expect(errorCaught).toBe(true);
+    });
+
+    it("should allow request interceptors to modify config", async () => {
+      const client = HttpClient.create();
+      
+      client.interceptors.request.use(
+        (config) => {
+          config.headers["X-Custom-Header"] = "interceptor-value";
+          return config;
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      await client.get("/test");
+      
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/test",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "X-Custom-Header": "interceptor-value",
+          }),
+        })
+      );
+    });
+
+    it("should allow response interceptors to modify response", async () => {
+      const client = HttpClient.create();
+      
+      client.interceptors.response.use(
+        (response) => {
+          response.data = { modified: true, original: response.data };
+          return response;
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      const response = await client.get("/test");
+      
+      expect(response.data).toEqual({
+        modified: true,
+        original: { message: "success" },
+      });
+    });
+
+    it("should allow error interceptors to handle errors", async () => {
+      const client = HttpClient.create();
+      
+      client.interceptors.error.use(
+        (error) => {
+          // Transform error into success response
+          return {
+            data: { recovered: true },
+            status: 200,
+            statusText: "OK",
+            headers: {},
+            config: error.response.config,
+            request: error.response.request,
+          } as any;
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ error: "server error" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      const response = await client.get("/test");
+      
+      expect(response.data).toEqual({ recovered: true });
+    });
+
+    it("should support ejecting interceptors", async () => {
+      const executionOrder: string[] = [];
+      
+      const client = HttpClient.create();
+      
+      const id1 = client.interceptors.request.use(
+        (config) => {
+          executionOrder.push("interceptor1");
+          return config;
+        }
+      );
+      
+      const _id2 = client.interceptors.request.use(
+        (_config) => {
+          executionOrder.push("interceptor2");
+          return _config;
+        },
+        (err) => {
+          executionOrder.push("rejected2");
+          return Promise.reject(err);
+        }
+      );
+
+      // Eject first interceptor
+      client.interceptors.request.eject(id1);
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      await client.get("/test");
+      
+      expect(executionOrder).toEqual(["interceptor2"]);
+    });
+
+    it("should support clearing all interceptors", async () => {
+      const executionOrder: string[] = [];
+      
+      const client = HttpClient.create();
+      
+      client.interceptors.request.use(
+        (config) => {
+          executionOrder.push("interceptor1");
+          return config;
+        }
+      );
+      
+      client.interceptors.request.use(
+        (_config) => {
+          executionOrder.push("interceptor2");
+          return _config;
+        },
+        (err) => {
+          executionOrder.push("rejected2");
+          return Promise.reject(err);
+        }
+      );
+
+      // Clear all interceptors
+      client.interceptors.request.clear();
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      await client.get("/test");
+      
+      expect(executionOrder).toEqual([]);
+    });
+
+    it("should handle async interceptors correctly", async () => {
+      const client = HttpClient.create();
+      
+      client.interceptors.request.use(
+        async (config) => {
+          // Simulate async operation
+          await new Promise(resolve => {
+            // Use process.nextTick or immediate resolution for testing
+            resolve(undefined);
+          });
+          config.headers["X-Async-Header"] = "async-value";
+          return config;
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      await client.get("/test");
+      
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/test",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "X-Async-Header": "async-value",
+          }),
+        })
+      );
+    });
+
+    it("should handle interceptor errors gracefully", async () => {
+      const client = HttpClient.create();
+      
+      client.interceptors.request.use(
+        (_config) => {
+          throw new Error("Interceptor error");
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      await expect(client.get("/test")).rejects.toThrow("Interceptor error");
+    });
+
+    it("should work with instance interceptors", async () => {
+      const client = HttpClient.create({ baseURL: "https://api.example.com" });
+      
+      client.interceptors.request.use(
+        (config) => {
+          config.headers["X-Instance-Header"] = "instance-value";
+          return config;
+        }
+      );
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+
+      await client.get("/test");
+      
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.example.com/test",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "X-Instance-Header": "instance-value",
+          }),
+        })
+      );
+    });
+
+    it("should call request interceptor rejected handler if fulfilled throws", async () => {
+      const order: string[] = [];
+      const client = HttpClient.create();
+      client.interceptors.request.use(
+        () => {
+          order.push("fulfilled1");
+          throw new Error("fail1");
+        },
+        (err) => {
+          order.push("rejected1");
+          return Promise.reject(err);
+        }
+      );
+      client.interceptors.request.use(
+        (_config) => {
+          order.push("fulfilled2");
+          return _config;
+        },
+        (err) => {
+          order.push("rejected2");
+          return Promise.reject(err);
+        }
+      );
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+      await expect(client.get("/test")).rejects.toThrow("fail1");
+      expect(order).toEqual(["fulfilled1", "rejected2"]);
+    });
+
+    it("should call response interceptor rejected handler if fulfilled throws", async () => {
+      const order: string[] = [];
+      const client = HttpClient.create();
+      client.interceptors.response.use(
+        () => {
+          order.push("fulfilled1");
+          throw new Error("fail1");
+        },
+        (err) => {
+          order.push("rejected1");
+          return Promise.reject(err);
+        }
+      );
+      client.interceptors.response.use(
+        (resp) => {
+          order.push("fulfilled2");
+          return resp;
+        },
+        (err) => {
+          order.push("rejected2");
+          return Promise.reject(err);
+        }
+      );
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ message: "success" }),
+        text: () => Promise.resolve(""),
+        formData: () => Promise.resolve(new FormData()),
+        blob: () => Promise.resolve(new Blob()),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+      await expect(client.get("/test")).rejects.toThrow("fail1");
+      expect(order).toEqual(["fulfilled1", "rejected2"]);
+    });
+  });
 }); 

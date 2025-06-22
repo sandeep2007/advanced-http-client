@@ -19,6 +19,8 @@ export default [
         Response: "readonly",
         Headers: "readonly",
         fetch: "readonly",
+        console: "readonly",
+        process: "readonly",
       },
     },
     plugins: {
@@ -47,6 +49,22 @@ export default [
         beforeEach: "readonly",
         beforeAll: "readonly",
         afterAll: "readonly",
+        global: "readonly",
+      },
+    },
+  },
+  {
+    files: ["scripts/**/*.js"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        module: "readonly",
+        require: "readonly",
+        exports: "readonly",
         global: "readonly",
       },
     },
