@@ -1,3 +1,0 @@
-{"total": {"lines":{"total":84,"covered":75,"skipped":0,"pct":89.28},"statements":{"total":87,"covered":76,"skipped":0,"pct":87.35},"functions":{"total":22,"covered":18,"skipped":0,"pct":81.81},"branches":{"total":51,"covered":43,"skipped":0,"pct":84.31},"branchesTrue":{"total":0,"covered":0,"skipped":0,"pct":"Unknown"}}
-,"C:\\workspace\\advance-http-client\\src\\index.ts": {"lines":{"total":84,"covered":75,"skipped":0,"pct":89.28},"functions":{"total":22,"covered":18,"skipped":0,"pct":81.81},"statements":{"total":87,"covered":76,"skipped":0,"pct":87.35},"branches":{"total":51,"covered":43,"skipped":0,"pct":84.31}}
-}
