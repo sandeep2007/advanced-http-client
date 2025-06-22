@@ -2,40 +2,76 @@
   "name": "advance-http-client",
   "version": "1.0.0",
   "description": "Universal HTTP client library using fetch for JS/TS projects (React, Next.js, Vue, Node.js, Bun, etc.)",
+  "keywords": [
+    "http-client",
+    "fetch",
+    "axios-alternative",
+    "universal",
+    "typescript",
+    "react",
+    "vue",
+    "nodejs",
+    "bun",
+    "browser"
+  ],
+  "author": "Sandeep Kumar <ki.sandeep11@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sandeep2007/advance-http-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sandeep2007/advance-http-client/issues"
+  },
+  "homepage": "https://github.com/sandeep2007/advance-http-client#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "type": "module",
+  "sideEffects": false,
   "scripts": {
     "build:esm": "tsc --project tsconfig.esm.json --outDir dist/esm",
     "build:cjs": "tsc --project tsconfig.cjs.json --outDir dist/cjs",
     "build:web": "webpack --config webpack.config.cjs",
     "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:web",
     "prepare": "npm run build",
-    "test": "jest",
-    "clean": "rimraf dist"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "MIT",
-  "type": "module",
-  "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.15.29",
-    "jest": "^29.7.0",
-    "rimraf": "^6.0.1",
-    "ts-jest": "^29.3.4",
-    "typescript": "^5.8.3",
-    "webpack": "^5.99.9",
-    "webpack-cli": "^6.0.1"
+    "test": "jest --coverage",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:coverage:watch": "jest --coverage --watch",
+    "ci": "npm run lint && npm run type-check && npm run test:coverage && npm run build && npm run generate:coverage-report",
+    "generate:coverage-report": "node scripts/generate-coverage-report.js",
+    "clean": "rimraf dist",
+    "lint": "eslint ./src --ext .ts",
+    "lint:fix": "eslint ./src --ext .ts --fix",
+    "type-check": "tsc --noEmit"
   },
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
+  "browser": "./dist/browser/http-client.js",
   "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js",
+      "browser": "./dist/browser/http-client.js",
       "types": "./dist/esm/index.d.ts"
     }
   },
   "files": [
     "dist"
-  ]
+  ],
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.15.29",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^9.28.0",
+    "jest": "^29.7.0",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.3.4",
+    "typescript": "5.5.4",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^6.0.1"
+  }
 }
