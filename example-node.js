@@ -521,6 +521,33 @@ async function realWorldExample() {
 }
 
 // ============================================================================
+// 11. TIMEOUT EXAMPLE
+// ============================================================================
+
+async function timeoutExample() {
+  console.log('⏱️ 11. TIMEOUT EXAMPLE');
+  console.log('========================\n');
+
+  try {
+    console.log('🔍 Request with 1s timeout to a 5s delay endpoint');
+    await HttpClient.get('https://httpbin.org/delay/5', { timeout: 1000 });
+    console.log('❌ Unexpected success - timeout should have aborted');
+  } catch (error) {
+    console.log('✅ Request aborted as expected:', error.message);
+  }
+
+  // Instance-level default timeout
+  try {
+    console.log('\n⏱️ Creating API instance with 1s default timeout');
+    const apiTimeout = HttpClient.create({ timeout: 1000, baseURL: 'https://httpbin.org' });
+    await apiTimeout.get('/delay/5');
+    console.log('❌ Unexpected success - instance timeout should have aborted');
+  } catch (error) {
+    console.log('✅ Instance request aborted as expected:', error.message);
+  }
+}
+
+// ============================================================================
 // 11. PERFORMANCE EXAMPLE
 // ============================================================================
 
@@ -573,6 +600,7 @@ async function runAllExamples() {
     await advancedOptionsExamples();
     await interceptorExamples();
     await realWorldExample();
+    await timeoutExample();
     await performanceExample();
 
     console.log('🎉 All examples completed successfully!');

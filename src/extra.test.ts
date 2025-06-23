@@ -298,4 +298,32 @@ describe("Additional coverage for HttpClient internals", () => {
     const res = await client.get("/default-interceptor");
     expect(res.status).toBe(200);
   });
+
+  it("should abort the request when timeout elapses", async () => {
+    jest.useFakeTimers();
+    jest.setTimeout(10000);
+
+    const client = HttpClient.create();
+
+    // mock fetch that rejects when aborted but otherwise never resolves
+    (jest.spyOn(global as any, "fetch") as any).mockImplementation((_u: string, opts: any) => {
+      return new Promise((_resolve, reject) => {
+        if (opts && opts.signal) {
+          opts.signal.addEventListener("abort", () => {
+            reject(new Error("aborted"));
+          });
+        }
+      });
+    });
+
+    const reqPromise = client.get("/timeout", { timeout: 100 } as any).catch((e)=>{return e;});
+
+    // Advance timers beyond timeout
+    await jest.advanceTimersByTimeAsync(150);
+
+    const err = await reqPromise;
+    expect(err).toBeDefined();
+
+    jest.useRealTimers();
+  });
 }); 
