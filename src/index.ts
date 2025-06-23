@@ -210,20 +210,26 @@ export class HttpClient {
    */
   static generateControlKey(): string {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result = "";
-    const array = new Uint32Array(20);
+    const bytes = new Uint8Array(20);
+
     const gCrypto: Crypto | undefined = (globalThis as any).crypto;
     if (gCrypto && typeof gCrypto.getRandomValues === "function") {
-      gCrypto.getRandomValues(array);
-      for (let i = 0; i < 20; i++) {
-        result += chars[array[i] % chars.length];
-      }
+      gCrypto.getRandomValues(bytes);
     } else {
-      // Fallback to Math.random() if crypto not available (e.g., older Node)
-      for (let i = 0; i < 20; i++) {
-        result += chars[Math.floor(Math.random() * chars.length)];
+      // Try Node.js crypto as a fallback (works in CJS & ESM)
+      const nodeCrypto = (globalThis as any).require?.("crypto");
+      if (nodeCrypto && typeof nodeCrypto.randomBytes === "function") {
+        const buf: Uint8Array = nodeCrypto.randomBytes(20);
+        buf.forEach((b: number, i: number) => (bytes[i] = b));
+      } else {
+        throw new Error("Secure random number generation is not available in this environment. Please provide a controlKey manually.");
       }
     }
+
+    let result = "";
+    bytes.forEach((b) => {
+      result += chars[b % chars.length];
+    });
     return result;
   }
 
