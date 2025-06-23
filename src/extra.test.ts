@@ -326,4 +326,86 @@ describe("Additional coverage for HttpClient internals", () => {
 
     jest.useRealTimers();
   });
+
+  // ------------------------------------------------------------------
+  // controlKey cancellation feature
+  // ------------------------------------------------------------------
+
+  function createHangingFetchMock() {
+    return (jest.spyOn(global as any, "fetch") as any).mockImplementation((_u: string, opts: any) => {
+      return new Promise((_resolve, reject) => {
+        if (opts && opts.signal) {
+          opts.signal.addEventListener("abort", () => {
+            reject(new Error("aborted"));
+          });
+        }
+      });
+    });
+  }
+
+  it("should cancel request via HttpClient.cancelRequest", async () => {
+    const client = HttpClient.create();
+
+    createHangingFetchMock();
+
+    jest.setTimeout(10000);
+    const p = client.get("/hang", { controlKey: "inst1" } as any).catch((e) => e);
+
+    // Allow async execution to register controller
+    await new Promise((r)=>globalThis.setImmediate(r));
+
+    HttpClient.cancelRequest("inst1");
+
+    const err = await p;
+    expect(err).toBeDefined();
+    expect(client["controllers"].has("inst1")).toBe(false);
+  });
+
+  it("should cancel all requests via HttpClient.cancelAllRequests", async () => {
+    const client = HttpClient.create();
+    createHangingFetchMock();
+
+    jest.setTimeout(10000);
+    const p1 = client.get("/hang1", { controlKey: "k1" } as any).catch((e) => e);
+    const p2 = client.get("/hang2", { controlKey: "k2" } as any).catch((e) => e);
+
+    await new Promise((r)=>globalThis.setImmediate(r));
+
+    HttpClient.cancelAllRequests();
+
+    const e1 = await p1;
+    const e2 = await p2;
+    expect(e1).toBeDefined();
+    expect(e2).toBeDefined();
+    expect(client["controllers"].size).toBe(0);
+  });
+
+  it("should throw error on duplicate controlKey", async () => {
+    const client = HttpClient.create();
+    createHangingFetchMock();
+
+    jest.setTimeout(10000);
+    client.get("/hang", { controlKey: "dupKey" } as any).catch(() => {});
+
+    await new Promise((r)=>globalThis.setImmediate(r));
+
+    await expect(
+      client.get("/hang2", { controlKey: "dupKey" } as any)
+    ).rejects.toThrow(/already in use/);
+  });
+
+  it("should generate 20-character alphanumeric controlKey", () => {
+    const key = HttpClient.generateControlKey();
+    expect(key).toMatch(/^[A-Za-z0-9]{20}$/);
+  });
+
+  it("should cancel hanging request without controlKey using cancelAllRequests", async () => {
+    const client = HttpClient.create();
+    createHangingFetchMock();
+    const p = client.get("/no-key-hang").catch((e)=>e);
+    await new Promise((r)=>globalThis.setImmediate(r));
+    HttpClient.cancelAllRequests();
+    const err = await p;
+    expect(err).toBeDefined();
+  });
 }); 
