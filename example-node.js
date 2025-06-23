@@ -548,6 +548,55 @@ async function timeoutExample() {
 }
 
 // ============================================================================
+// 12. CANCELLATION EXAMPLE (controlKey)
+// ============================================================================
+
+async function cancellationExample() {
+  console.log('🚫 12. CANCELLATION EXAMPLE');
+  console.log('=================================\n');
+
+  // Per-request cancellation
+  const ctrlKey = HttpClient.generateControlKey();
+  const hangingPromise = HttpClient.get('https://httpbin.org/delay/5', {
+    timeout: 0,
+    controlKey: ctrlKey,
+  }).catch((err) => err);
+
+  console.log('🔍 Started request with controlKey', ctrlKey);
+  // Abort after 1 second using global API
+  setTimeout(() => {
+    HttpClient.cancelRequest(ctrlKey);
+    console.log('⚡ cancelRequest called for', ctrlKey);
+  }, 1000);
+
+  const res = await hangingPromise;
+  console.log('✅ Request cancelled:', res.message);
+
+  // Instance-level cancellation of multiple requests
+  const api = HttpClient.create({ baseURL: 'https://httpbin.org' });
+  const p1 = api.get('/delay/5', { controlKey: 'i1' }).catch((e) => e);
+  const p2 = api.get('/delay/5', { controlKey: 'i2' }).catch((e) => e);
+  console.log('🔍 Started two instance requests i1 & i2');
+  setTimeout(() => {
+    HttpClient.cancelAllRequests();
+    console.log('⚡ cancelAllRequests called on instance');
+  }, 1000);
+  await Promise.all([p1, p2]);
+
+  // Cancellation without controlKey using cancelAllRequests
+  const noKeyPromise = HttpClient.get('https://httpbin.org/delay/5').catch((e)=>e);
+  console.log('🔍 Started request without controlKey');
+  setTimeout(()=>{
+    HttpClient.cancelAllRequests();
+    console.log('⚡ cancelAllRequests called (no controlKey)');
+  },1000);
+  await noKeyPromise;
+  console.log('✅ Request without controlKey cancelled');
+
+  console.log('✅ Both instance requests cancelled');
+}
+
+// ============================================================================
 // 11. PERFORMANCE EXAMPLE
 // ============================================================================
 
@@ -601,6 +650,7 @@ async function runAllExamples() {
     await interceptorExamples();
     await realWorldExample();
     await timeoutExample();
+    await cancellationExample();
     await performanceExample();
 
     console.log('🎉 All examples completed successfully!');

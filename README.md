@@ -206,6 +206,44 @@ await apiTimeout.post('/delay/5', { foo: 'bar' });
 
 ---
 
+### Runtime Cancellation (controlKey)
+
+`advance-http-client` lets you abort in-flight requests at any moment:
+
+1. Provide a `controlKey` when you initiate a request – a unique string that identifies that call.
+2. Later call `HttpClient.cancelRequest(key)` or `HttpClient.cancelAllRequests()` to abort it (or every request).
+
+```ts
+// Generate a cryptographically-strong 20-char key
+const key = HttpClient.generateControlKey();
+
+// Start a request with this key
+const pending = HttpClient.get('https://httpbin.org/delay/5', { controlKey: key });
+
+// …at some later time
+HttpClient.cancelRequest(key); // promise rejects with AbortError
+```
+
+#### Anonymous requests
+
+If you **omit** `controlKey`, the library still tracks the call internally under a shared key `"__anonymous__"`.  That means:
+
+* You can have only **one** anonymous request active at a time – a second one will automatically reuse the same abort controller.
+* Call `HttpClient.cancelRequest('__anonymous__')` _or_ `HttpClient.cancelAllRequests()` to abort it.
+* Explicit keys are still checked for duplicates – trying to reuse an existing key throws an error so you don't cancel the wrong request inadvertently.
+
+```ts
+// Start anonymous request
+HttpClient.get('https://httpbin.org/delay/5');
+
+// Abort all anonymous & keyed requests
+HttpClient.cancelAllRequests();
+```
+
+> **Tip**   Use `HttpClient.generateControlKey()` whenever you need a guaranteed-unique key.
+
+---
+
 ### API
 
 All methods return a Promise that resolves to a response object or rejects with an error containing a `.response` property:

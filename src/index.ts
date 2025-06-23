@@ -6,6 +6,10 @@ export interface ExtendedRequestInit extends RequestInit {
    * Request timeout in milliseconds. If the request does not complete within this time it will be aborted.
    */
   timeout?: number;
+  /**
+   * Unique key that can later be used to cancel this request via cancelRequest.
+   */
+  controlKey?: string;
 }
 
 // Define proper error type
@@ -44,12 +48,20 @@ export interface HttpRequestOptions extends Omit<RequestInit, "headers"> {
    * Request timeout in milliseconds. If the request does not complete within this time it will be aborted.
    */
   timeout?: number;
+  /**
+   * Unique key that can later be used to cancel this request via cancelRequest.
+   */
+  controlKey?: string;
 }
 
 export interface HttpClientConfig extends Omit<RequestInit, "headers"> {
   baseURL?: string;
   headers?: Record<string, string>;
   timeout?: number;
+  /**
+   * Default cancellation key applied to every request made by this instance (optional)
+   */
+  controlKey?: string;
 }
 
 // Interceptor types
@@ -149,8 +161,13 @@ const HTTP_METHODS = {
   DELETE: "DELETE",
 } as const;
 
+// Special key used internally for requests that don't specify a controlKey
+const ANONYMOUS_KEY = "__anonymous__";
+
 export class HttpClient {
   private static globalHeaders: Record<string, string> = {};
+  private static globalControllers = new Map<string, AbortController>();
+  private static allInstances = new Set<HttpClient>();
   private readonly baseURL?: string;
   private readonly instanceHeaders: Record<string, string>;
   private readonly instanceOptions: Omit<RequestInit, "headers">;
@@ -161,6 +178,8 @@ export class HttpClient {
     response: InterceptorManager<ResponseInterceptor>;
     error: InterceptorManager<ErrorInterceptor>;
   };
+
+  private controllers = new Map<string, AbortController>();
 
   constructor(config?: HttpClientConfig) {
     this.baseURL = config?.baseURL;
@@ -174,6 +193,9 @@ export class HttpClient {
       response: new InterceptorManagerImpl<ResponseInterceptor>(),
       error: new ErrorInterceptorManagerImpl(),
     };
+    
+    // Track instance for global cancellation capability
+    HttpClient.allInstances.add(this);
   }
 
   /**
@@ -181,6 +203,28 @@ export class HttpClient {
    */
   static setHeader(key: string, value: string): void {
     this.globalHeaders[key] = value;
+  }
+
+  /**
+   * Generate a random 20-character alphanumeric string suitable for use as a controlKey.
+   */
+  static generateControlKey(): string {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    const array = new Uint32Array(20);
+    const gCrypto: Crypto | undefined = (globalThis as any).crypto;
+    if (gCrypto && typeof gCrypto.getRandomValues === "function") {
+      gCrypto.getRandomValues(array);
+      for (let i = 0; i < 20; i++) {
+        result += chars[array[i] % chars.length];
+      }
+    } else {
+      // Fallback to Math.random() if crypto not available (e.g., older Node)
+      for (let i = 0; i < 20; i++) {
+        result += chars[Math.floor(Math.random() * chars.length)];
+      }
+    }
+    return result;
   }
 
   /**
@@ -360,15 +404,22 @@ export class HttpClient {
     // Execute request interceptors
     const interceptedOptions = await this.executeRequestInterceptors(finalOptions);
     
-    // Timeout handling using AbortController
+    // Determine if we have to create an AbortController (for timeout or controlKey)
+    const needsController = (!interceptedOptions.signal) || (typeof interceptedOptions.timeout === "number" && interceptedOptions.timeout > 0) || interceptedOptions.controlKey;
+
     let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
     let controller: AbortController | undefined;
-    if (typeof interceptedOptions.timeout === "number" && interceptedOptions.timeout > 0) {
-      // If a signal already exists, we cannot attach our AbortController.
+    let currentControlKey: string | undefined = interceptedOptions.controlKey;
+
+    if (needsController) {
       if (!interceptedOptions.signal) {
         controller = new AbortController();
         interceptedOptions.signal = controller.signal;
       }
+    }
+
+    if (typeof interceptedOptions.timeout === "number" && interceptedOptions.timeout > 0) {
+      // If a signal already exists, we cannot attach our AbortController.
       timeoutId = globalThis.setTimeout(() => {
         controller?.abort();
       }, interceptedOptions.timeout);
@@ -376,9 +427,51 @@ export class HttpClient {
       delete (interceptedOptions as any).timeout;
     }
 
+    // Handle controlKey registration (no duplicates)
+    if (currentControlKey) {
+      const key = currentControlKey;
+      delete (interceptedOptions as any).controlKey;
+      let map: Map<string, AbortController>;
+      if ((this as any)._isStaticInstance) {
+        map = HttpClient.globalControllers;
+      } else {
+        map = this.controllers;
+      }
+      if (map.has(key)) {
+        throw new Error(`controlKey '${key}' is already in use.`);
+      }
+      if (!controller) {
+        controller = new AbortController();
+        interceptedOptions.signal = controller.signal;
+      }
+      map.set(key, controller);
+    }
+
+    // Handle requests without a controlKey by using a shared anonymous key
+    if (!currentControlKey) {
+      const mapAnon: Map<string, AbortController> = (this as any)._isStaticInstance ? HttpClient.globalControllers : this.controllers;
+      const existingCtrl = mapAnon.get(ANONYMOUS_KEY);
+      if (existingCtrl) {
+        // Reuse existing controller
+        interceptedOptions.signal = existingCtrl.signal;
+        controller = existingCtrl;
+      } else {
+        if (!controller) {
+          controller = new AbortController();
+          interceptedOptions.signal = controller.signal;
+        }
+        mapAnon.set(ANONYMOUS_KEY, controller);
+      }
+    }
+
     try {
       const response = await fetch(fullUrl, interceptedOptions);
       if (timeoutId) globalThis.clearTimeout(timeoutId);
+      // Remove controlKey mapping after completion
+      if (currentControlKey) {
+        const map = this.controllers.has(currentControlKey) ? this.controllers : HttpClient.globalControllers;
+        map.delete(currentControlKey);
+      }
       const data = await HttpClient.parseResponseBody(response);
       const headers: Record<string, string> = {};
       
@@ -411,6 +504,11 @@ export class HttpClient {
       // Execute response interceptors
       return await this.executeResponseInterceptors(result);
     } catch (error) {
+      // Ensure we clean up controllers even on error
+      if (currentControlKey) {
+        const map = this.controllers.has(currentControlKey) ? this.controllers : HttpClient.globalControllers;
+        map.delete(currentControlKey);
+      }
       // Execute error interceptors
       return await this.executeErrorInterceptors(error as HttpClientError);
     }
@@ -466,12 +564,25 @@ export class HttpClient {
     return this.requestWithBody<T>(HTTP_METHODS.DELETE, url, body, options);
   }
 
-  // Add static methods for backward compatibility
+  // Internal helper to abort controllers for cleanup
+  private _abortAllControllers() {
+    this.controllers.forEach((c) => c.abort());
+    this.controllers.clear();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Static helper methods (backward compatibility)
+  // These create a temporary client marked as a "static" instance so that any
+  // controlKey registered will be placed in the globalControllers map. After
+  // completion, users can cancel with HttpClient.cancelRequest / cancelAllRequests.
+  // ---------------------------------------------------------------------------
   static async get<T = unknown>(
     url: string,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
-    return new HttpClient().get<T>(url, options);
+    const client = new HttpClient();
+    (client as any)._isStaticInstance = true;
+    return client.get<T>(url, options);
   }
 
   static async post<T = unknown>(
@@ -479,7 +590,9 @@ export class HttpClient {
     body?: unknown,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
-    return new HttpClient().post<T>(url, body, options);
+    const client = new HttpClient();
+    (client as any)._isStaticInstance = true;
+    return client.post<T>(url, body, options);
   }
 
   static async patch<T = unknown>(
@@ -487,7 +600,9 @@ export class HttpClient {
     body?: unknown,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
-    return new HttpClient().patch<T>(url, body, options);
+    const client = new HttpClient();
+    (client as any)._isStaticInstance = true;
+    return client.patch<T>(url, body, options);
   }
 
   static async delete<T = unknown>(
@@ -495,7 +610,40 @@ export class HttpClient {
     body?: unknown,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
-    return new HttpClient().delete<T>(url, body, options);
+    const client = new HttpClient();
+    (client as any)._isStaticInstance = true;
+    return client.delete<T>(url, body, options);
+  }
+
+  static cancelRequest(controlKey: string): void {
+    // First look in global map
+    const ctrl = HttpClient.globalControllers.get(controlKey);
+    if (ctrl) {
+      ctrl.abort();
+      HttpClient.globalControllers.delete(controlKey);
+      return;
+    }
+
+    // Otherwise, search all instances
+    for (const inst of HttpClient.allInstances) {
+      const c = inst.controllers.get(controlKey);
+      if (c) {
+        c.abort();
+        inst.controllers.delete(controlKey);
+        break;
+      }
+    }
+  }
+
+  static cancelAllRequests(): void {
+    // Abort global controllers
+    HttpClient.globalControllers.forEach((c) => c.abort());
+    HttpClient.globalControllers.clear();
+
+    // Abort controllers in every instance
+    for (const inst of HttpClient.allInstances) {
+      inst._abortAllControllers();
+    }
   }
 }
 

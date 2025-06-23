@@ -845,6 +845,39 @@ try {
             <div id="timeout-output" class="output"></div>
           </div>
         </div>
+
+        <!-- 13. Cancellation Example (controlKey) -->
+        <div class="example-section">
+          <div class="section-header" onclick="toggleSection(this)">
+            <h3>🚫 13. Cancellation Example</h3>
+            <p>Start requests with controlKey and cancel them programmatically</p>
+          </div>
+          <div class="section-content">
+            <div class="code-snippet">
+              <h4>📝 Code Example:</h4>
+              <pre><code>// Start a cancellable request (with controlKey)
+const ctrlKey = HttpClient.generateControlKey();
+const withKey = HttpClient.get('https://httpbin.org/delay/5', { controlKey: ctrlKey });
+
+// Later, cancel that specific one
+HttpClient.cancelRequest(ctrlKey);
+
+// Start a request WITHOUT a controlKey
+const noKey = HttpClient.get('https://httpbin.org/delay/5');
+
+// Cancel every pending request (with or without keys)
+HttpClient.cancelAllRequests();</code></pre>
+            </div>
+            <div class="button-group">
+              <button class="btn btn-primary" onclick="startCancelableRequest()">Start Request</button>
+              <button class="btn btn-danger" onclick="cancelGlobalRequest()">Cancel Request</button>
+              <button class="btn btn-success" onclick="startInstanceRequests()">Start Instance Requests</button>
+              <button class="btn btn-secondary" onclick="startNoKeyRequest()">Start Request (no key)</button>
+              <button class="btn btn-warning" onclick="cancelAllRequests()">Cancel All Requests</button>
+            </div>
+            <div id="cancel-output" class="output"></div>
+          </div>
+        </div>
       </div>
 
       <div class="footer">
@@ -1647,6 +1680,78 @@ try {
           setLoading(button, false);
         }
       }
+
+      // 13. Cancellation Example
+      let pendingControlKey = null;
+      let pendingInstance = null;
+
+      async function startCancelableRequest() {
+        const button = event.target;
+        setLoading(button, true);
+        clearOutput('cancel-output');
+        try {
+          pendingControlKey = HttpClient.generateControlKey();
+          log('cancel-output', `🚀 Starting request with controlKey: ${pendingControlKey}`);
+          await HttpClient.get('https://httpbin.org/delay/5', { controlKey: pendingControlKey });
+          log('cancel-output', '❌ Request unexpectedly completed', 'error');
+        } catch (err) {
+          log('cancel-output', `✅ Request cancelled: ${err.message}`, 'success');
+        } finally {
+          setLoading(button, false);
+          pendingControlKey = null;
+        }
+      }
+
+      function cancelGlobalRequest() {
+        if (!pendingControlKey) {
+          log('cancel-output', 'ℹ️ No pending request to cancel', 'info');
+          return;
+        }
+        HttpClient.cancelRequest(pendingControlKey);
+        log('cancel-output', `⚡ cancelRequest called for ${pendingControlKey}`);
+      }
+
+      async function startInstanceRequests() {
+        const button = event.target;
+        setLoading(button, true);
+        clearOutput('cancel-output');
+        try {
+          pendingInstance = HttpClient.create({ baseURL: 'https://httpbin.org' });
+          log('cancel-output', '🚀 Starting two instance requests with controlKeys i1 & i2');
+          const p1 = pendingInstance.get('/delay/5', { controlKey: 'i1' }).catch(e => e);
+          const p2 = pendingInstance.get('/delay/5', { controlKey: 'i2' }).catch(e => e);
+          await Promise.all([p1, p2]);
+          log('cancel-output', '❌ Instance requests unexpectedly completed', 'error');
+        } catch (err) {
+          log('cancel-output', `✅ Instance requests cancelled: ${err.message}`, 'success');
+        } finally {
+          setLoading(button, false);
+          pendingInstance = null;
+        }
+      }
+
+      async function startNoKeyRequest() {
+        const button = event.target;
+        setLoading(button, true);
+        clearOutput('cancel-output');
+        try {
+          log('cancel-output', '🚀 Starting request WITHOUT controlKey');
+          await HttpClient.get('https://httpbin.org/delay/5');
+          log('cancel-output', '❌ Request unexpectedly completed', 'error');
+        } catch (err) {
+          log('cancel-output', `✅ Request cancelled: ${err.message}`, 'success');
+        } finally {
+          setLoading(button, false);
+        }
+      }
+
+      function cancelAllRequests() {
+        HttpClient.cancelAllRequests();
+        log('cancel-output', '⚡ cancelAllRequests called (global)');
+      }
+
+      // Backwards compatibility alias
+      const cancelInstanceRequests = cancelAllRequests;
 
       // Initialize the page
       document.addEventListener('DOMContentLoaded', function() {
