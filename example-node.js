@@ -9,10 +9,10 @@
  */
 
 // Import the HttpClient (ESM syntax)
-import HttpClient from './dist/esm/index.js';
+import HttpClient from 'advance-http-client';
 
 // For CommonJS environments, use:
-// const HttpClient = require('./dist/cjs/index.js');
+// const HttpClient = require('advance-http-client');
 
 console.log('🚀 Advance HTTP Client - Node.js Examples\n');
 
