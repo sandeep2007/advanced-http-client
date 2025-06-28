@@ -2,17 +2,17 @@
 /**
  * Advance HTTP Client - Node.js Examples
  * 
- * This file demonstrates all features of the advance-http-client library
+ * This file demonstrates all features of the advanced-http-client library
  * for Node.js environments (Node.js 18+ with built-in fetch support).
  * 
  * Run with: node example-node.js
  */
 
 // Import the HttpClient (ESM syntax)
-import HttpClient from 'advance-http-client';
+import HttpClient from 'advanced-http-client';
 
 // For CommonJS environments, use:
-// const HttpClient = require('advance-http-client');
+// const HttpClient = require('advanced-http-client');
 
 console.log('🚀 Advance HTTP Client - Node.js Examples\n');
 
@@ -37,7 +37,7 @@ async function basicUsageExamples() {
     console.log('📤 POST Request:');
     const postData = {
       title: 'Test Post',
-      body: 'This is a test post from advance-http-client',
+      body: 'This is a test post from advanced-http-client',
       userId: 1
     };
     const postResponse = await HttpClient.post('https://jsonplaceholder.typicode.com/posts', postData);
@@ -118,7 +118,7 @@ async function globalHeadersExamples() {
 
   // Set global headers that will be sent with all requests
   HttpClient.setHeader('X-Global-Header', 'global-value');
-  HttpClient.setHeader('User-Agent', 'advance-http-client/1.0.0');
+  HttpClient.setHeader('User-Agent', 'advanced-http-client/1.0.0');
 
   try {
     console.log('🔍 Request with Global Headers:');
@@ -468,7 +468,7 @@ async function realWorldExample() {
       baseURL: 'https://api.github.com',
       headers: {
         'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'advance-http-client-example'
+        'User-Agent': 'advanced-http-client-example'
       }
     });
     
@@ -484,7 +484,7 @@ async function realWorldExample() {
       baseURL: 'https://jsonplaceholder.typicode.com',
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'advance-http-client-example'
+        'User-Agent': 'advanced-http-client-example'
       }
     });
     
@@ -655,7 +655,7 @@ async function runAllExamples() {
 
     console.log('🎉 All examples completed successfully!');
     console.log('\n📚 For more information, check the README.md file.');
-    console.log('🔗 GitHub: https://github.com/yourusername/advance-http-client');
+    console.log('🔗 GitHub: https://github.com/yourusername/advanced-http-client');
 
   } catch (error) {
     console.error('❌ Fatal error running examples:', error);

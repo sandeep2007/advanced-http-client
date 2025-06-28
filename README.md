@@ -1,5 +1,5 @@
-# advance-http-client
-[![npm](https://img.shields.io/npm/v/advance-http-client.svg)](https://www.npmjs.com/package/advance-http-client)
+# advanced-http-client
+[![npm](https://img.shields.io/npm/v/advanced-http-client.svg)](https://www.npmjs.com/package/advanced-http-client)
 
 A universal, modern HTTP client library using `fetch` for JavaScript and TypeScript projects. Works seamlessly in Node.js (18+), browsers, and modern JS runtimes/frameworks (React, Next.js, Vue, Bun, etc.).
 
@@ -25,7 +25,7 @@ A universal, modern HTTP client library using `fetch` for JavaScript and TypeScr
 ## Installation
 
 ```bash
-npm install advance-http-client
+npm install advanced-http-client
 ```
 
 ### Node.js Requirements
@@ -49,8 +49,8 @@ npm install node-fetch
 Or clone and build locally:
 
 ```bash
-git clone https://github.com/sandeep2007/advance-http-client.git
-cd advance-http-client
+git clone https://github.com/sandeep2007/advanced-http-client.git
+cd advanced-http-client
 npm install
 npm run build
 ```
@@ -68,8 +68,8 @@ npm run build
 
 ```bash
 # Clone the repository
-git clone https://github.com/sandeep2007/advance-http-client.git
-cd advance-http-client
+git clone https://github.com/sandeep2007/advanced-http-client.git
+cd advanced-http-client
 
 # Install dependencies
 npm install
@@ -118,7 +118,7 @@ npm run ci
 ### Project Structure
 
 ```
-advance-http-client/
+advanced-http-client/
 ├── src/
 │   ├── index.ts          # Main source code
 │   └── index.test.ts     # Test suite
@@ -138,7 +138,7 @@ advance-http-client/
 ### Node.js (18+)
 
 ```js
-import HttpClient from "advance-http-client";
+import HttpClient from "advanced-http-client";
 
 async function main() {
   try {
@@ -169,7 +169,7 @@ main();
 ### Browser (UMD)
 
 ```html
-<script src="https://unpkg.com/advance-http-client/dist/browser/http-client.js"></script>
+<script src="https://unpkg.com/advanced-http-client/dist/browser/http-client.js"></script>
 <script>
   HttpClient.get("https://jsonplaceholder.typicode.com/todos/1")
     .then((response) => {
@@ -187,7 +187,7 @@ main();
 
 ### Request Timeout (AbortController)
 
-`advance-http-client` supports configurable timeouts using the browser / Node `AbortController`.
+`advanced-http-client` supports configurable timeouts using the browser / Node `AbortController`.
 
 • **Per-request** – pass `timeout` (milliseconds) in the options object.
 • **Instance default** – set `timeout` in `HttpClient.create()` so every call on that instance inherits the limit.
@@ -209,7 +209,7 @@ await apiTimeout.post('/delay/5', { foo: 'bar' });
 
 ### Runtime Cancellation (controlKey)
 
-`advance-http-client` lets you abort in-flight requests at any moment:
+`advanced-http-client` lets you abort in-flight requests at any moment:
 
 1. Provide a `controlKey` when you initiate a request – a unique string that identifies that call.
 2. Later call `HttpClient.cancelRequest(key)` or `HttpClient.cancelAllRequests()` to abort it (or every request).
@@ -365,7 +365,7 @@ See also: [Security Notes](#security-notes)
 const response = await fetch('/api/data');
 const data = await response.json();
 
-// advance-http-client
+// advanced-http-client
 const response = await HttpClient.get('/api/data');
 const data = response.data; // Already parsed
 ```

@@ -2,7 +2,7 @@
 
 ## 📊 Coverage Summary
 
-**Generated:** 2025-06-28T08:38:58.821Z  
+**Generated:** 2025-06-28T17:16:53.951Z  
 **Test Framework:** Jest  
 **Coverage Tool:** Jest Coverage  
 
@@ -21,7 +21,7 @@
 ----------|---------|----------|---------|---------|-----------------------------
 File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 ----------|---------|----------|---------|---------|-----------------------------
-C:\workspace\advance-http-client\src\index.ts |   89.04 |    80.55 |    87.5 |   91.03 | 
+C:\workspace\advanced-http-client\src\index.ts |   89.04 |    80.55 |    87.5 |   91.03 | 
 All files |   89.04 |    80.55 |    87.5 |   91.03 | 
 
 ```
