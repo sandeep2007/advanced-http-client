@@ -521,6 +521,82 @@ async function realWorldExample() {
 }
 
 // ============================================================================
+// 11. TIMEOUT EXAMPLE
+// ============================================================================
+
+async function timeoutExample() {
+  console.log('⏱️ 11. TIMEOUT EXAMPLE');
+  console.log('========================\n');
+
+  try {
+    console.log('🔍 Request with 1s timeout to a 5s delay endpoint');
+    await HttpClient.get('https://httpbin.org/delay/5', { timeout: 1000 });
+    console.log('❌ Unexpected success - timeout should have aborted');
+  } catch (error) {
+    console.log('✅ Request aborted as expected:', error.message);
+  }
+
+  // Instance-level default timeout
+  try {
+    console.log('\n⏱️ Creating API instance with 1s default timeout');
+    const apiTimeout = HttpClient.create({ timeout: 1000, baseURL: 'https://httpbin.org' });
+    await apiTimeout.get('/delay/5');
+    console.log('❌ Unexpected success - instance timeout should have aborted');
+  } catch (error) {
+    console.log('✅ Instance request aborted as expected:', error.message);
+  }
+}
+
+// ============================================================================
+// 12. CANCELLATION EXAMPLE (controlKey)
+// ============================================================================
+
+async function cancellationExample() {
+  console.log('🚫 12. CANCELLATION EXAMPLE');
+  console.log('=================================\n');
+
+  // Per-request cancellation
+  const ctrlKey = HttpClient.generateControlKey();
+  const hangingPromise = HttpClient.get('https://httpbin.org/delay/5', {
+    timeout: 0,
+    controlKey: ctrlKey,
+  }).catch((err) => err);
+
+  console.log('🔍 Started request with controlKey', ctrlKey);
+  // Abort after 1 second using global API
+  setTimeout(() => {
+    HttpClient.cancelRequest(ctrlKey);
+    console.log('⚡ cancelRequest called for', ctrlKey);
+  }, 1000);
+
+  const res = await hangingPromise;
+  console.log('✅ Request cancelled:', res.message);
+
+  // Instance-level cancellation of multiple requests
+  const api = HttpClient.create({ baseURL: 'https://httpbin.org' });
+  const p1 = api.get('/delay/5', { controlKey: 'i1' }).catch((e) => e);
+  const p2 = api.get('/delay/5', { controlKey: 'i2' }).catch((e) => e);
+  console.log('🔍 Started two instance requests i1 & i2');
+  setTimeout(() => {
+    HttpClient.cancelAllRequests();
+    console.log('⚡ cancelAllRequests called on instance');
+  }, 1000);
+  await Promise.all([p1, p2]);
+
+  // Cancellation without controlKey using cancelAllRequests
+  const noKeyPromise = HttpClient.get('https://httpbin.org/delay/5').catch((e)=>e);
+  console.log('🔍 Started request without controlKey');
+  setTimeout(()=>{
+    HttpClient.cancelAllRequests();
+    console.log('⚡ cancelAllRequests called (no controlKey)');
+  },1000);
+  await noKeyPromise;
+  console.log('✅ Request without controlKey cancelled');
+
+  console.log('✅ Both instance requests cancelled');
+}
+
+// ============================================================================
 // 11. PERFORMANCE EXAMPLE
 // ============================================================================
 
@@ -573,6 +649,8 @@ async function runAllExamples() {
     await advancedOptionsExamples();
     await interceptorExamples();
     await realWorldExample();
+    await timeoutExample();
+    await cancellationExample();
     await performanceExample();
 
     console.log('🎉 All examples completed successfully!');

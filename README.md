@@ -184,6 +184,66 @@ main();
 </script>
 ```
 
+### Request Timeout (AbortController)
+
+`advance-http-client` supports configurable timeouts using the browser / Node `AbortController`.
+
+• **Per-request** – pass `timeout` (milliseconds) in the options object.
+• **Instance default** – set `timeout` in `HttpClient.create()` so every call on that instance inherits the limit.
+
+If the timer elapses before the server responds the underlying `fetch` call is aborted and the returned promise rejects with an `AbortError` (or the platform-specific error message).
+
+```ts
+// Per-request timeout (2 s)
+await HttpClient.get('https://httpbin.org/delay/5', { timeout: 2000 });
+
+// Instance-level default timeout
+const apiTimeout = HttpClient.create({ baseURL: 'https://httpbin.org', timeout: 2000 });
+await apiTimeout.post('/delay/5', { foo: 'bar' });
+```
+
+> **Note** If you also supply a custom `AbortSignal` in the request options, `HttpClient` will respect it and not override your signal.
+
+---
+
+### Runtime Cancellation (controlKey)
+
+`advance-http-client` lets you abort in-flight requests at any moment:
+
+1. Provide a `controlKey` when you initiate a request – a unique string that identifies that call.
+2. Later call `HttpClient.cancelRequest(key)` or `HttpClient.cancelAllRequests()` to abort it (or every request).
+
+```ts
+// Generate a cryptographically-strong 20-char key
+const key = HttpClient.generateControlKey();
+
+// Start a request with this key
+const pending = HttpClient.get('https://httpbin.org/delay/5', { controlKey: key });
+
+// …at some later time
+HttpClient.cancelRequest(key); // promise rejects with AbortError
+```
+
+#### Anonymous requests
+
+If you **omit** `controlKey`, the library still tracks the call internally under a shared key `"__anonymous__"`.  That means:
+
+* You can have only **one** anonymous request active at a time – a second one will automatically reuse the same abort controller.
+* Call `HttpClient.cancelRequest('__anonymous__')` _or_ `HttpClient.cancelAllRequests()` to abort it.
+* Explicit keys are still checked for duplicates – trying to reuse an existing key throws an error so you don't cancel the wrong request inadvertently.
+
+```ts
+// Start anonymous request
+HttpClient.get('https://httpbin.org/delay/5');
+
+// Abort all anonymous & keyed requests
+HttpClient.cancelAllRequests();
+```
+
+> **Tip**   Use `HttpClient.generateControlKey()` whenever you need a guaranteed-unique key.
+
+---
+
 ### API
 
 All methods return a Promise that resolves to a response object or rejects with an error containing a `.response` property:
@@ -297,18 +357,6 @@ See also: [Security Notes](#security-notes)
 
 ## Migration Guide
 
-### From Axios
-
-```javascript
-// Axios
-import axios from 'axios';
-const response = await axios.get('/api/data');
-
-// advance-http-client
-import HttpClient from 'advance-http-client';
-const response = await HttpClient.get('/api/data');
-```
-
 ### From fetch
 
 ```javascript
@@ -320,256 +368,3 @@ const data = await response.json();
 const response = await HttpClient.get('/api/data');
 const data = response.data; // Already parsed
 ```
-
-### From node-fetch
-
-```javascript
-// node-fetch
-import fetch from 'node-fetch';
-const response = await fetch('/api/data');
-const data = await response.json();
-
-// advance-http-client (Node.js 18+)
-import HttpClient from 'advance-http-client';
-const response = await HttpClient.get('/api/data');
-const data = response.data;
-```
-
----
-
-## Performance Considerations
-
-- **Bundle Size**: ~3KB minified (UMD), ~7KB (ESM/CJS)
-- **Memory Usage**: Minimal overhead over native fetch
-- **Network**: Uses native fetch, so performance matches your environment
-- **Parsing**: Automatic JSON parsing for JSON responses
-- **Caching**: No built-in caching (use browser cache or implement your own)
-
-### Best Practices
-
-1. **Reuse Instances**: Create HttpClient instances for APIs you use frequently
-2. **Global Headers**: Use `HttpClient.setHeader()` for headers that apply to all requests
-3. **Error Boundaries**: Always wrap requests in try-catch blocks
-4. **Type Safety**: Use TypeScript for better development experience
-
----
-
-## Important Notes
-
-- **Default Accept Header:** All requests include an `Accept: application/json` header by default unless you override it. This ensures consistent JSON parsing for most APIs.
-- **Content-Type Handling:** For `post`, `patch`, and `delete` methods, the `Content-Type: application/json` header is only set if you do not provide your own. This allows sending custom payloads (e.g., `FormData`, `Blob`).
-- **DELETE with Body:** The `delete` method supports an optional request body, which is stringified as JSON by default if provided.
-- **UMD/Browser Usage:** In browser environments, the library is available as the global `HttpClient` (e.g., `window.HttpClient`).
-- **Node.js Compatibility:** For Node.js versions <18, you must polyfill `fetch` (e.g., with `node-fetch`).
-
----
-
-## Building
-
-```
-npm run build
-```
-
-- ESM output: `dist/esm/`
-- CJS output: `dist/cjs/`
-- UMD (browser): `dist/browser/http-client.js`
-
----
-
-## Testing
-
-```
-npm run test
-```
-
-Runs Jest tests in `src/index.test.ts`.
-
-**Coverage Report:**
-```
-npm run test:coverage
-```
-
-Generates coverage reports in the `coverage/` directory.
-
----
-
-## Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Make** your changes
-4. **Run** the test suite (`npm run ci`)
-5. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-6. **Push** to the branch (`git push origin feature/amazing-feature`)
-7. **Open** a Pull Request
-
-### Development Guidelines
-
-- Follow the existing code style (ESLint rules)
-- Add tests for new features
-- Update documentation for API changes
-- Ensure all tests pass (`npm run ci`)
-- Maintain TypeScript type safety
-
-### Code Style
-
-- Use TypeScript for all new code
-- Follow ESLint configuration
-- Use meaningful variable and function names
-- Add JSDoc comments for public APIs
-
----
-
-## Security Note
-
-- Do not hardcode sensitive credentials (e.g., Authorization tokens, API keys) in client-side/browser code.
-- Global headers set with setHeader are sent with every request unless overridden. Use per-request headers for sensitive data when possible.
-- Always validate and sanitize any dynamic URLs or user input passed to request methods to avoid SSRF or open redirect risks.
-- This library has no known vulnerabilities and no dependencies, but always keep your environment and polyfills up to date.
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-#### 1. Fetch is not defined (Node.js <18)
-
-**Error:** `fetch is not available in this environment`
-
-**Solution:** Install a fetch polyfill:
-
-```bash
-npm install node-fetch
-```
-
-Then import it at the top of your file:
-
-```javascript
-import 'node-fetch'; // For ESM
-// or
-require('node-fetch'); // For CommonJS
-```
-
-#### 2. Module not found errors
-
-**Error:** `Cannot resolve module 'advance-http-client'`
-
-**Solution:** Check your import/require syntax:
-
-```javascript
-// ESM (recommended)
-import HttpClient from 'advance-http-client';
-
-// CommonJS
-const HttpClient = require('advance-http-client');
-
-// Browser (UMD)
-// Include the script tag first, then use global HttpClient
-```
-
-#### 3. TypeScript errors
-
-**Error:** `Property 'response' does not exist on type 'Error'`
-
-**Solution:** Use proper type checking:
-
-```typescript
-try {
-  await HttpClient.get('/api/data');
-} catch (error) {
-  if (error && typeof error === 'object' && 'response' in error) {
-    const httpError = error as HttpClientError;
-    console.error(httpError.response.status);
-  }
-}
-```
-
-#### 4. CORS issues in browser
-
-**Error:** `Access to fetch at '...' from origin '...' has been blocked by CORS policy`
-
-**Solution:** This is a server-side issue. The server needs to include proper CORS headers.
-
-**Common CORS Issues:**
-- **GitHub API**: Has strict CORS policies and doesn't allow browser requests without authentication
-- **Third-party APIs**: Many APIs don't support CORS for security reasons
-- **Local development**: Use a CORS proxy or configure your server to allow cross-origin requests
-
-**Workarounds:**
-```javascript
-// Use CORS-friendly APIs for browser examples
-const api = HttpClient.create({
-  baseURL: 'https://jsonplaceholder.typicode.com' // CORS-friendly
-});
-
-// For APIs with CORS issues, use a proxy or server-side requests
-const proxyApi = HttpClient.create({
-  baseURL: 'https://cors-anywhere.herokuapp.com/https://api.github.com'
-});
-```
-
-#### 5. Build issues
-
-**Error:** `Cannot find module` during build
-
-**Solution:** Ensure you're using the correct entry point:
-
-```javascript
-// For bundlers (webpack, rollup, etc.)
-import HttpClient from 'advance-http-client';
-
-// For Node.js ESM
-import HttpClient from 'advance-http-client';
-
-// For Node.js CommonJS  
-const HttpClient = require('advance-http-client');
-```
-
-### Environment-Specific Notes
-
-#### React/Next.js
-- Works out of the box with no additional configuration
-- Supports SSR (Server-Side Rendering)
-- Compatible with React 16.8+ (hooks)
-
-#### Vue.js
-- Works in Vue 2 and Vue 3
-- Compatible with Composition API and Options API
-- Supports SSR
-
-#### Bun
-- Native support, no polyfills needed
-- Faster than Node.js for HTTP requests
-
-#### Deno
-- Native support, no polyfills needed
-- Works with Deno's security model
-
----
-
-## Version History
-
-### v1.0.0
-- Initial release
-- Universal HTTP client with fetch
-- TypeScript support
-- ESM, CJS, and UMD builds
-- Instance and static methods
-- Isolated request support
-
----
-
-## License
-
-MIT
-
----
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/sandeep2007/advance-http-client/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/sandeep2007/advance-http-client/discussions)
-- **Documentation**: [GitHub Wiki](https://github.com/sandeep2007/advance-http-client/wiki)
