@@ -1,4 +1,5 @@
 # advance-http-client
+[![npm](https://img.shields.io/npm/v/advance-http-client.svg)](https://www.npmjs.com/package/advance-http-client)
 
 A universal, modern HTTP client library using `fetch` for JavaScript and TypeScript projects. Works seamlessly in Node.js (18+), browsers, and modern JS runtimes/frameworks (React, Next.js, Vue, Bun, etc.).
 
@@ -48,7 +49,7 @@ npm install node-fetch
 Or clone and build locally:
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/sandeep2007/advance-http-client.git
 cd advance-http-client
 npm install
 npm run build
@@ -67,7 +68,7 @@ npm run build
 
 ```bash
 # Clone the repository
-git clone <repo-url>
+git clone https://github.com/sandeep2007/advance-http-client.git
 cd advance-http-client
 
 # Install dependencies
@@ -137,7 +138,7 @@ advance-http-client/
 ### Node.js (18+)
 
 ```js
-import HttpClient from "./dist/esm/index.js";
+import HttpClient from "advance-http-client";
 
 async function main() {
   try {
@@ -168,7 +169,7 @@ main();
 ### Browser (UMD)
 
 ```html
-<script src="./dist/browser/http-client.js"></script>
+<script src="https://unpkg.com/advance-http-client/dist/browser/http-client.js"></script>
 <script>
   HttpClient.get("https://jsonplaceholder.typicode.com/todos/1")
     .then((response) => {
