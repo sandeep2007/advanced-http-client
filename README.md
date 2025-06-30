@@ -3,14 +3,16 @@
 
 A universal, modern HTTP client library using `fetch` for JavaScript and TypeScript projects. Works seamlessly in Node.js (18+), browsers, and modern JS runtimes/frameworks (React, Next.js, Vue, Bun, etc.).
 
-## 🚀 Demo
-
-[🔗 Live Demo](https://sandeep2007.github.io/advanced-http-client/example.html)
-
 - **ESM, CJS, and UMD builds**
 - **TypeScript support**
 - **Flexible API and error handling**
 - **Lightweight, no dependencies**
+
+---
+
+## 🚀 Demo
+
+[🔗 Live Demo](https://sandeep2007.github.io/advanced-http-client/example.html)
 
 ---
 
