@@ -1,7 +1,7 @@
 # advanced-http-client
 [![npm](https://img.shields.io/npm/v/advanced-http-client.svg)](https://www.npmjs.com/package/advanced-http-client)
 
-A universal, modern HTTP client library using `fetch` for JavaScript and TypeScript projects. Works seamlessly in Node.js (18+), browsers, and modern JS runtimes/frameworks (React, Next.js, Vue, Bun, etc.).
+A universal, modern HTTP client library using `fetch` for JavaScript and TypeScript projects. Works seamlessly in Node.js (v18+), browsers, and modern JS runtimes/frameworks (React, Next.js, Vue, Bun, etc.).
 
 - **ESM, CJS, and UMD builds**
 - **TypeScript support**
