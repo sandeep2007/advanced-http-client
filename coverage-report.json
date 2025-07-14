@@ -1,38 +1,38 @@
 {
   "metadata": {
-    "generated": "2025-06-28T17:35:52.559Z",
+    "generated": "2025-07-14T16:08:27.603Z",
     "testFramework": "Jest",
     "coverageTool": "Jest Coverage",
     "version": "1.0.0"
   },
   "summary": {
     "statements": {
-      "percentage": 89.04,
-      "status": "good",
+      "percentage": 90.86,
+      "status": "excellent",
       "target": 90
     },
     "branches": {
-      "percentage": 80.55,
+      "percentage": 81.3,
       "status": "good",
       "target": 85
     },
     "functions": {
-      "percentage": 87.5,
+      "percentage": 87.27,
       "status": "good",
       "target": 85
     },
     "lines": {
-      "percentage": 91.03,
+      "percentage": 92.92,
       "status": "excellent",
       "target": 90
     }
   },
   "files": {
     "C:\\workspace\\advanced-http-client\\src\\index.ts": {
-      "statements": 89.04,
-      "branches": 80.55,
-      "functions": 87.5,
-      "lines": 91.03,
+      "statements": 90.86,
+      "branches": 81.3,
+      "functions": 87.27,
+      "lines": 92.92,
       "uncoveredLines": []
     }
   },
@@ -96,8 +96,8 @@
   },
   "trends": {
     "previousCoverage": 88.29,
-    "currentCoverage": 91.03,
-    "change": 2.74,
+    "currentCoverage": 92.92,
+    "change": 4.63,
     "reason": "Interceptor functionality added"
   },
   "qualityMetrics": {
