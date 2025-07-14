@@ -31,7 +31,7 @@ export interface HttpClientResponse<T = unknown> {
   request: Response;
 }
 
-export interface HttpRequestOptions extends Omit<RequestInit, "headers"> {
+export interface HttpRequestOptions extends Omit<RequestInit, 'headers'> {
   /**
    * Headers as a plain object. This is always a Record<string, string> in this implementation.
    */
@@ -54,7 +54,7 @@ export interface HttpRequestOptions extends Omit<RequestInit, "headers"> {
   controlKey?: string;
 }
 
-export interface HttpClientConfig extends Omit<RequestInit, "headers"> {
+export interface HttpClientConfig extends Omit<RequestInit, 'headers'> {
   baseURL?: string;
   headers?: Record<string, string>;
   timeout?: number;
@@ -65,17 +65,17 @@ export interface HttpClientConfig extends Omit<RequestInit, "headers"> {
 }
 
 // Interceptor types
-export interface RequestInterceptor {
-  (_config: HttpRequestOptions): HttpRequestOptions | Promise<HttpRequestOptions>;
-}
+export type RequestInterceptor = (
+  _config: HttpRequestOptions
+) => HttpRequestOptions | Promise<HttpRequestOptions>;
 
-export interface ResponseInterceptor<T = unknown> {
-  (_response: HttpClientResponse<T>): HttpClientResponse<T> | Promise<HttpClientResponse<T>>;
-}
+export type ResponseInterceptor<T = unknown> = (
+  _response: HttpClientResponse<T>
+) => HttpClientResponse<T> | Promise<HttpClientResponse<T>>;
 
-export interface ErrorInterceptor {
-  (_error: HttpClientError): HttpClientError | Promise<HttpClientError> | Promise<never>;
-}
+export type ErrorInterceptor = (
+  _error: HttpClientError
+) => HttpClientError | Promise<HttpClientError> | Promise<never>;
 
 interface InterceptorHandler<T> {
   _fulfilled?: T;
@@ -116,62 +116,40 @@ class InterceptorManagerImpl<T> implements InterceptorManager<T> {
   }
 }
 
-// Separate error interceptor manager
-class ErrorInterceptorManagerImpl implements InterceptorManager<ErrorInterceptor> {
-  private _handlers: InterceptorHandler<ErrorInterceptor>[] = [];
-  private nextId = 0;
-
-  use(_fulfilled?: ErrorInterceptor, _rejected?: ErrorInterceptor): number {
-    this._handlers.push({
-      _fulfilled,
-      _rejected,
-    });
-    return this.nextId++;
-  }
-
-  eject(_id: number): void {
-    if (this._handlers[_id]) {
-      this._handlers[_id] = {};
-    }
-  }
-
-  clear(): void {
-    this._handlers = [];
-  }
-
-  get handlers(): InterceptorHandler<ErrorInterceptor>[] {
-    return this._handlers;
-  }
-}
-
 // Constants for content types
 const CONTENT_TYPES = {
-  JSON: "application/json",
-  TEXT: "text/",
-  FORM: "form",
-  BLOB: "blob",
-  ARRAY_BUFFER: "arraybuffer",
+  JSON: 'application/json',
+  TEXT: 'text/',
+  FORM: 'form',
+  BLOB: 'blob',
+  ARRAY_BUFFER: 'arraybuffer',
 } as const;
 
 // Constants for HTTP methods
 const HTTP_METHODS = {
-  GET: "GET",
-  POST: "POST",
-  PATCH: "PATCH",
-  DELETE: "DELETE",
+  GET: 'GET',
+  POST: 'POST',
+  PATCH: 'PATCH',
+  DELETE: 'DELETE',
 } as const;
 
 // Special key used internally for requests that don't specify a controlKey
-const ANONYMOUS_KEY = "__anonymous__";
+const ANONYMOUS_KEY = '__anonymous__';
+
+// Length of generated control keys
+const CONTROL_KEY_LENGTH = 20;
 
 export class HttpClient {
   private static globalHeaders: Record<string, string> = {};
-  private static globalControllers = new Map<string, AbortController>();
-  private static allInstances = new Set<HttpClient>();
+  private static readonly globalControllers = new Map<
+    string,
+    AbortController
+  >();
+  private static readonly allInstances = new Set<HttpClient>();
   private readonly baseURL?: string;
   private readonly instanceHeaders: Record<string, string>;
-  private readonly instanceOptions: Omit<RequestInit, "headers">;
-  
+  private readonly instanceOptions: Omit<RequestInit, 'headers'>;
+
   // Interceptor properties
   public interceptors: {
     request: InterceptorManager<RequestInterceptor>;
@@ -179,21 +157,21 @@ export class HttpClient {
     error: InterceptorManager<ErrorInterceptor>;
   };
 
-  private controllers = new Map<string, AbortController>();
+  private readonly controllers = new Map<string, AbortController>();
 
   constructor(config?: HttpClientConfig) {
     this.baseURL = config?.baseURL;
     this.instanceHeaders = { ...(config?.headers || {}) };
     const { baseURL: _baseURL, headers: _headers, ...rest } = config || {};
     this.instanceOptions = rest;
-    
+
     // Initialize interceptors
     this.interceptors = {
       request: new InterceptorManagerImpl<RequestInterceptor>(),
       response: new InterceptorManagerImpl<ResponseInterceptor>(),
-      error: new ErrorInterceptorManagerImpl(),
+      error: new InterceptorManagerImpl<ErrorInterceptor>(),
     };
-    
+
     // Track instance for global cancellation capability
     HttpClient.allInstances.add(this);
   }
@@ -209,24 +187,35 @@ export class HttpClient {
    * Generate a random 20-character alphanumeric string suitable for use as a controlKey.
    */
   static generateControlKey(): string {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    const bytes = new Uint8Array(20);
+    const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = new Uint8Array(CONTROL_KEY_LENGTH);
 
-    const gCrypto: Crypto | undefined = (globalThis as any).crypto;
-    if (gCrypto && typeof gCrypto.getRandomValues === "function") {
+    const gCrypto: Crypto | undefined = (
+      globalThis as unknown as { crypto?: Crypto }
+    ).crypto;
+    if (gCrypto && typeof gCrypto.getRandomValues === 'function') {
       gCrypto.getRandomValues(bytes);
     } else {
       // Try Node.js crypto as a fallback (works in CJS & ESM)
-      const nodeCrypto = (globalThis as any).require?.("crypto");
-      if (nodeCrypto && typeof nodeCrypto.randomBytes === "function") {
-        const buf: Uint8Array = nodeCrypto.randomBytes(20);
+      const nodeCrypto = (
+        globalThis as unknown as {
+          require?: (_id: string) => {
+            randomBytes?: (_size: number) => Uint8Array;
+          };
+        }
+      ).require?.('crypto');
+      if (nodeCrypto && typeof nodeCrypto.randomBytes === 'function') {
+        const buf: Uint8Array = nodeCrypto.randomBytes(CONTROL_KEY_LENGTH);
         buf.forEach((b: number, i: number) => (bytes[i] = b));
       } else {
-        throw new Error("Secure random number generation is not available in this environment. Please provide a controlKey manually.");
+        throw new Error(
+          'Secure random number generation is not available in this environment. Please provide a controlKey manually.'
+        );
       }
     }
 
-    let result = "";
+    let result = '';
     bytes.forEach((b) => {
       result += chars[b % chars.length];
     });
@@ -252,9 +241,9 @@ export class HttpClient {
   }
 
   private static async parseResponseBody(response: Response): Promise<unknown> {
-    let data: unknown = undefined;
-    const contentType: string = response.headers.get("content-type") ?? "";
-    
+    let data: unknown;
+    const contentType: string = response.headers.get('content-type') ?? '';
+
     if (contentType && contentType.indexOf(CONTENT_TYPES.JSON) !== -1) {
       data = await response.json();
     } else if (contentType && contentType.indexOf(CONTENT_TYPES.TEXT) !== -1) {
@@ -263,7 +252,10 @@ export class HttpClient {
       data = await response.formData();
     } else if (contentType && contentType.indexOf(CONTENT_TYPES.BLOB) !== -1) {
       data = await response.blob();
-    } else if (contentType && contentType.indexOf(CONTENT_TYPES.ARRAY_BUFFER) !== -1) {
+    } else if (
+      contentType &&
+      contentType.indexOf(CONTENT_TYPES.ARRAY_BUFFER) !== -1
+    ) {
       data = await response.arrayBuffer();
     } else {
       data = await response.text();
@@ -273,38 +265,36 @@ export class HttpClient {
 
   private mergeConfig(options?: ExtendedRequestInit): HttpRequestOptions {
     if (options?.isolated) {
-      const headers: Record<string, string> = {};
-      
-      // If includeHeaders is set, pull those from global/instance headers
-      if (Array.isArray(options.includeHeaders)) {
-        const include = options.includeHeaders;
-        // Pull from instanceHeaders first, then globalHeaders
-        for (const key of include) {
-          if (this.instanceHeaders?.[key] !== undefined) {
-            headers[key] = this.instanceHeaders[key];
-          } else if (HttpClient.globalHeaders[key] !== undefined) {
-            headers[key] = HttpClient.globalHeaders[key];
-          }
-        }
-      }
-      
-      // Merge in provided headers (overrides included ones)
-      if (options.headers) {
-        if (options.headers instanceof Headers) {
-          options.headers.forEach((v, k) => (headers[k] = v));
-        } else if (Array.isArray(options.headers)) {
-          options.headers.forEach(([k, v]) => (headers[k] = v));
-        } else {
-          Object.assign(headers, options.headers);
-        }
-      }
-      
-      return {
-        ...options,
-        headers,
-      };
+      return this.createIsolatedConfig(options);
     }
-    
+
+    return this.createNormalConfig(options);
+  }
+
+  private createIsolatedConfig(
+    options: ExtendedRequestInit
+  ): HttpRequestOptions {
+    const headers: Record<string, string> = {};
+
+    // If includeHeaders is set, pull those from global/instance headers
+    if (Array.isArray(options.includeHeaders)) {
+      this.addIncludedHeaders(headers, options.includeHeaders);
+    }
+
+    // Merge in provided headers (overrides included ones)
+    if (options.headers) {
+      this.mergeProvidedHeaders(headers, options.headers);
+    }
+
+    return {
+      ...options,
+      headers,
+    };
+  }
+
+  private createNormalConfig(
+    options?: ExtendedRequestInit
+  ): HttpRequestOptions {
     // Merge instance headers, global headers, and per-request headers
     const mergedHeaders: Record<string, string> = {
       ...this.instanceHeaders,
@@ -312,22 +302,49 @@ export class HttpClient {
         ? this.convertHeadersToObject(options.headers)
         : (options?.headers as Record<string, string>) || {}),
     };
-    
+
     // Merge global headers after user headers, so user headers take precedence
     Object.entries(HttpClient.globalHeaders).forEach(([k, v]) => {
       if (!(k in mergedHeaders)) mergedHeaders[k] = v;
     });
-    
+
     // Set default Accept header if not already set
-    if (!mergedHeaders["Accept"]) {
-      mergedHeaders["Accept"] = CONTENT_TYPES.JSON;
+    if (!mergedHeaders['Accept']) {
+      mergedHeaders['Accept'] = CONTENT_TYPES.JSON;
     }
-    
+
     return {
       ...this.instanceOptions,
       ...options,
       headers: mergedHeaders,
     };
+  }
+
+  private addIncludedHeaders(
+    headers: Record<string, string>,
+    includeHeaders: string[]
+  ): void {
+    // Pull from instanceHeaders first, then globalHeaders
+    for (const key of includeHeaders) {
+      if (this.instanceHeaders?.[key] !== undefined) {
+        headers[key] = this.instanceHeaders[key];
+      } else if (HttpClient.globalHeaders[key] !== undefined) {
+        headers[key] = HttpClient.globalHeaders[key];
+      }
+    }
+  }
+
+  private mergeProvidedHeaders(
+    headers: Record<string, string>,
+    providedHeaders: HeadersInit
+  ): void {
+    if (providedHeaders instanceof Headers) {
+      providedHeaders.forEach((v, k) => (headers[k] = v));
+    } else if (Array.isArray(providedHeaders)) {
+      providedHeaders.forEach(([k, v]) => (headers[k] = v));
+    } else {
+      Object.assign(headers, providedHeaders);
+    }
   }
 
   private convertHeadersToObject(headers: Headers): Record<string, string> {
@@ -340,57 +357,192 @@ export class HttpClient {
 
   private buildURL(url: string): string {
     if (this.baseURL && !/^https?:\/\//i.test(url)) {
-      return this.baseURL.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+      return this.baseURL.replace(/\/$/, '') + '/' + url.replace(/^\//, '');
     }
     return url;
   }
 
-  private async executeRequestInterceptors(config: HttpRequestOptions): Promise<HttpRequestOptions> {
+  private setupAbortController(
+    interceptedOptions: HttpRequestOptions,
+    currentControlKey?: string
+  ): AbortController | undefined {
+    // Determine if we have to create an AbortController (for timeout or controlKey)
+    const needsController =
+      !interceptedOptions.signal ||
+      (typeof interceptedOptions.timeout === 'number' &&
+        interceptedOptions.timeout > 0) ||
+      currentControlKey;
+
+    let controller: AbortController | undefined;
+
+    if (needsController && !interceptedOptions.signal) {
+      controller = new AbortController();
+      interceptedOptions.signal = controller.signal;
+    }
+
+    return controller;
+  }
+
+  private setupTimeout(
+    interceptedOptions: HttpRequestOptions,
+    controller?: AbortController
+  ): ReturnType<typeof globalThis.setTimeout> | undefined {
+    if (
+      typeof interceptedOptions.timeout === 'number' &&
+      interceptedOptions.timeout > 0
+    ) {
+      const timeoutId = globalThis.setTimeout(() => {
+        controller?.abort();
+      }, interceptedOptions.timeout);
+      // timeout should not be passed to fetch API
+      delete (interceptedOptions as unknown as { timeout?: number }).timeout;
+      return timeoutId;
+    }
+    return undefined;
+  }
+
+  private setupControlKey(
+    interceptedOptions: HttpRequestOptions,
+    currentControlKey?: string,
+    controller?: AbortController
+  ): AbortController | undefined {
+    if (currentControlKey) {
+      return this.handleNamedControlKey(
+        interceptedOptions,
+        currentControlKey,
+        controller
+      );
+    }
+
+    return this.handleAnonymousControlKey(interceptedOptions, controller);
+  }
+
+  private handleNamedControlKey(
+    interceptedOptions: HttpRequestOptions,
+    controlKey: string,
+    controller?: AbortController
+  ): AbortController {
+    delete (interceptedOptions as unknown as { controlKey?: string })
+      .controlKey;
+
+    const map = this.getControllerMap();
+    if (map.has(controlKey)) {
+      throw new Error(`controlKey '${controlKey}' is already in use.`);
+    }
+
+    const finalController =
+      controller || this.createControllerWithSignal(interceptedOptions);
+    map.set(controlKey, finalController);
+    return finalController;
+  }
+
+  private handleAnonymousControlKey(
+    interceptedOptions: HttpRequestOptions,
+    controller?: AbortController
+  ): AbortController {
+    const map = this.getControllerMap();
+    const existingCtrl = map.get(ANONYMOUS_KEY);
+
+    if (existingCtrl) {
+      interceptedOptions.signal = existingCtrl.signal;
+      return existingCtrl;
+    }
+
+    const finalController =
+      controller || this.createControllerWithSignal(interceptedOptions);
+    map.set(ANONYMOUS_KEY, finalController);
+    return finalController;
+  }
+
+  private getControllerMap(): Map<string, AbortController> {
+    const isStaticInstance = (
+      this as unknown as { _isStaticInstance?: boolean }
+    )._isStaticInstance;
+    return isStaticInstance ? HttpClient.globalControllers : this.controllers;
+  }
+
+  private createControllerWithSignal(
+    interceptedOptions: HttpRequestOptions
+  ): AbortController {
+    const controller = new AbortController();
+    interceptedOptions.signal = controller.signal;
+    return controller;
+  }
+
+  private cleanupControlKey(currentControlKey?: string): void {
+    if (currentControlKey) {
+      const map = this.controllers.has(currentControlKey)
+        ? this.controllers
+        : HttpClient.globalControllers;
+      map.delete(currentControlKey);
+    }
+  }
+
+  private async executeRequestInterceptors(
+    config: HttpRequestOptions
+  ): Promise<HttpRequestOptions> {
     let promise: Promise<HttpRequestOptions> = Promise.resolve(config);
     const chain = this.interceptors.request.handlers;
     for (const { _fulfilled, _rejected } of chain) {
       promise = promise.then(
-        _fulfilled ? _fulfilled : (_c) => _c,
-        _rejected ? _rejected : (_e) => Promise.reject(_e)
+        _fulfilled ?? ((c) => c),
+        _rejected ??
+          ((e) => Promise.reject(e instanceof Error ? e : new Error(String(e))))
       );
     }
     return promise;
   }
 
-  private async executeResponseInterceptors<T>(response: HttpClientResponse<T>): Promise<HttpClientResponse<T>> {
+  private async executeResponseInterceptors<T>(
+    response: HttpClientResponse<T>
+  ): Promise<HttpClientResponse<T>> {
     let promise: Promise<HttpClientResponse<T>> = Promise.resolve(response);
     const chain = this.interceptors.response.handlers;
     for (const { _fulfilled, _rejected } of chain) {
       promise = promise.then(
-        _fulfilled ? (_fulfilled as (_r: HttpClientResponse<T>) => HttpClientResponse<T> | Promise<HttpClientResponse<T>>) : (_r) => _r,
-        _rejected ? (_rejected as (_e: any) => any) : (_e) => Promise.reject(_e)
+        _fulfilled
+          ? (_fulfilled as (
+              _r: HttpClientResponse<T>
+            ) => HttpClientResponse<T> | Promise<HttpClientResponse<T>>)
+          : (_r) => _r,
+        _rejected
+          ? (_rejected as (_e: any) => any)
+          : (_e) =>
+              Promise.reject(_e instanceof Error ? _e : new Error(String(_e)))
       );
     }
     return promise;
   }
 
-  private async executeErrorInterceptors(error: HttpClientError): Promise<never> {
+  private async executeErrorInterceptors(
+    error: HttpClientError
+  ): Promise<never> {
     let currentError = error;
-    
+
     // Execute error interceptors
     for (const interceptor of this.interceptors.error.handlers) {
       if (interceptor._fulfilled) {
         try {
           const result = await interceptor._fulfilled(currentError);
           // If the interceptor returns a response, it means the error was handled
-          if (result && typeof result === 'object' && 'data' in result && 'status' in result) {
+          if (
+            result &&
+            typeof result === 'object' &&
+            'data' in result &&
+            'status' in result
+          ) {
             return result as never;
           }
           // If it returns an error, continue the chain
           if (result && typeof result === 'object' && 'message' in result) {
-            currentError = result as HttpClientError;
+            currentError = result;
           }
         } catch (interceptorError) {
           currentError = interceptorError as HttpClientError;
         }
       }
     }
-    
+
     throw currentError;
   }
 
@@ -398,93 +550,44 @@ export class HttpClient {
     url: string,
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
-    if (typeof fetch === "undefined") {
+    if (typeof fetch === 'undefined') {
       throw new Error(
-        "fetch is not available in this environment. For Node.js <18, install a fetch polyfill."
+        'fetch is not available in this environment. For Node.js <18, install a fetch polyfill.'
       );
     }
-    
+
     const finalOptions = this.mergeConfig(options as ExtendedRequestInit);
     const fullUrl = this.buildURL(url);
-    
+
     // Execute request interceptors
-    const interceptedOptions = await this.executeRequestInterceptors(finalOptions);
-    
-    // Determine if we have to create an AbortController (for timeout or controlKey)
-    const needsController = (!interceptedOptions.signal) || (typeof interceptedOptions.timeout === "number" && interceptedOptions.timeout > 0) || interceptedOptions.controlKey;
+    const interceptedOptions = await this.executeRequestInterceptors(
+      finalOptions
+    );
 
-    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
-    let controller: AbortController | undefined;
-    let currentControlKey: string | undefined = interceptedOptions.controlKey;
+    const currentControlKey: string | undefined = interceptedOptions.controlKey;
 
-    if (needsController) {
-      if (!interceptedOptions.signal) {
-        controller = new AbortController();
-        interceptedOptions.signal = controller.signal;
-      }
-    }
-
-    if (typeof interceptedOptions.timeout === "number" && interceptedOptions.timeout > 0) {
-      // If a signal already exists, we cannot attach our AbortController.
-      timeoutId = globalThis.setTimeout(() => {
-        controller?.abort();
-      }, interceptedOptions.timeout);
-      // timeout should not be passed to fetch API
-      delete (interceptedOptions as any).timeout;
-    }
-
-    // Handle controlKey registration (no duplicates)
-    if (currentControlKey) {
-      const key = currentControlKey;
-      delete (interceptedOptions as any).controlKey;
-      let map: Map<string, AbortController>;
-      if ((this as any)._isStaticInstance) {
-        map = HttpClient.globalControllers;
-      } else {
-        map = this.controllers;
-      }
-      if (map.has(key)) {
-        throw new Error(`controlKey '${key}' is already in use.`);
-      }
-      if (!controller) {
-        controller = new AbortController();
-        interceptedOptions.signal = controller.signal;
-      }
-      map.set(key, controller);
-    }
-
-    // Handle requests without a controlKey by using a shared anonymous key
-    if (!currentControlKey) {
-      const mapAnon: Map<string, AbortController> = (this as any)._isStaticInstance ? HttpClient.globalControllers : this.controllers;
-      const existingCtrl = mapAnon.get(ANONYMOUS_KEY);
-      if (existingCtrl) {
-        // Reuse existing controller
-        interceptedOptions.signal = existingCtrl.signal;
-        controller = existingCtrl;
-      } else {
-        if (!controller) {
-          controller = new AbortController();
-          interceptedOptions.signal = controller.signal;
-        }
-        mapAnon.set(ANONYMOUS_KEY, controller);
-      }
-    }
+    // Setup abort controller, timeout, and control key
+    let controller = this.setupAbortController(
+      interceptedOptions,
+      currentControlKey
+    );
+    const timeoutId = this.setupTimeout(interceptedOptions, controller);
+    this.setupControlKey(interceptedOptions, currentControlKey, controller);
 
     try {
       const response = await fetch(fullUrl, interceptedOptions);
       if (timeoutId) globalThis.clearTimeout(timeoutId);
+
       // Remove controlKey mapping after completion
-      if (currentControlKey) {
-        const map = this.controllers.has(currentControlKey) ? this.controllers : HttpClient.globalControllers;
-        map.delete(currentControlKey);
-      }
+      this.cleanupControlKey(currentControlKey);
+
       const data = await HttpClient.parseResponseBody(response);
       const headers: Record<string, string> = {};
-      
+
       response.headers.forEach((value, key) => {
         headers[key] = value;
       });
-      
+
       const result: HttpClientResponse<T> = {
         data: data as T,
         status: response.status,
@@ -498,23 +601,20 @@ export class HttpClient {
         },
         request: response,
       };
-      
+
       if (!response.ok) {
         const error = new Error(
           `Request failed with status code ${response.status}`
-        ) as HttpClientError;
-        error.response = result;
+        );
+        (error as HttpClientError).response = result;
         throw error;
       }
-      
+
       // Execute response interceptors
       return await this.executeResponseInterceptors(result);
     } catch (error) {
       // Ensure we clean up controllers even on error
-      if (currentControlKey) {
-        const map = this.controllers.has(currentControlKey) ? this.controllers : HttpClient.globalControllers;
-        map.delete(currentControlKey);
-      }
+      this.cleanupControlKey(currentControlKey);
       // Execute error interceptors
       return await this.executeErrorInterceptors(error as HttpClientError);
     }
@@ -535,14 +635,14 @@ export class HttpClient {
   ): Promise<HttpClientResponse<T>> {
     const opts = this.mergeConfig(options as ExtendedRequestInit);
     opts.method = method;
-    
+
     if (body !== undefined) {
       opts.body = JSON.stringify(body);
-      if (!opts.headers["Content-Type"]) {
-        opts.headers["Content-Type"] = CONTENT_TYPES.JSON;
+      if (!opts.headers['Content-Type']) {
+        opts.headers['Content-Type'] = CONTENT_TYPES.JSON;
       }
     }
-    
+
     return this.request<T>(url, opts);
   }
 
@@ -587,7 +687,8 @@ export class HttpClient {
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
     const client = new HttpClient();
-    (client as any)._isStaticInstance = true;
+    (client as unknown as { _isStaticInstance: boolean })._isStaticInstance =
+      true;
     return client.get<T>(url, options);
   }
 
@@ -597,7 +698,8 @@ export class HttpClient {
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
     const client = new HttpClient();
-    (client as any)._isStaticInstance = true;
+    (client as unknown as { _isStaticInstance: boolean })._isStaticInstance =
+      true;
     return client.post<T>(url, body, options);
   }
 
@@ -607,7 +709,8 @@ export class HttpClient {
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
     const client = new HttpClient();
-    (client as any)._isStaticInstance = true;
+    (client as unknown as { _isStaticInstance: boolean })._isStaticInstance =
+      true;
     return client.patch<T>(url, body, options);
   }
 
@@ -617,7 +720,8 @@ export class HttpClient {
     options?: RequestInit
   ): Promise<HttpClientResponse<T>> {
     const client = new HttpClient();
-    (client as any)._isStaticInstance = true;
+    (client as unknown as { _isStaticInstance: boolean })._isStaticInstance =
+      true;
     return client.delete<T>(url, body, options);
   }
 
